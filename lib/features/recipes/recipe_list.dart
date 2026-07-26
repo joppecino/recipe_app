@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../database/database.dart';
 import '../../providers/providers.dart';
+import '../import/import_recipe.dart';
 import 'recipe_card.dart';
 
 class RecipeListScreen extends ConsumerStatefulWidget {
@@ -103,7 +104,13 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () async {
+          final saved = await Navigator.of(context).push<bool>(
+            MaterialPageRoute(
+                builder: (_) => const ImportRecipeScreen()),
+          );
+          if (saved == true) setState(() {});
+        },
         child: const Icon(Icons.add),
       ),
     );
