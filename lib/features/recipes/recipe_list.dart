@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../database/database.dart';
 import '../../providers/providers.dart';
 import '../import/import_recipe.dart';
+import '../settings/settings_screen.dart';
 import 'recipe_card.dart';
 
 String normalizeTag(String tag) {
@@ -277,18 +278,11 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
         title: const Text('Recipes'),
         actions: [
           IconButton(
-            icon: Icon(
-              ref.watch(themeModeProvider) == ThemeMode.dark
-                  ? Icons.light_mode
-                  : Icons.dark_mode,
+            icon: const Icon(Icons.settings),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                  builder: (_) => const SettingsScreen()),
             ),
-            onPressed: () {
-              final current = ref.read(themeModeProvider);
-              ref.read(themeModeProvider.notifier).state =
-                  current == ThemeMode.dark
-                      ? ThemeMode.light
-                      : ThemeMode.dark;
-            },
           ),
         ],
       ),
