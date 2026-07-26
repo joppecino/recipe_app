@@ -345,7 +345,10 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
             },
           ),
         ),
-        body: AnimatedSwitcher(
+        body: GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          behavior: HitTestBehavior.translucent,
+          child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
           transitionBuilder: (child, animation) => SlideTransition(
             position: Tween<Offset>(
@@ -862,6 +865,7 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
                     ),
                   ),
                 ),
+        ),
         ),
         bottomNavigationBar: hasRecipe
             ? SafeArea(

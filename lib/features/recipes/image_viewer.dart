@@ -11,31 +11,39 @@ class FullScreenImage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: theme.appBarTheme.backgroundColor,
-        iconTheme: theme.appBarTheme.iconTheme,
-        elevation: 0,
-      ),
-      body: LayoutBuilder(
-        builder: (context, constraints) => InteractiveViewer(
-          child: Center(
-            child: Image.network(
-              imageUrl,
-              width: constraints.maxWidth,
-              height: constraints.maxHeight,
-              fit: BoxFit.contain,
-              errorBuilder: (_, _, _) => const Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.broken_image, color: Colors.grey, size: 64),
-                  SizedBox(height: 16),
-                  Text('Failed to load image',
-                      style: TextStyle(color: Colors.grey)),
-                ],
+      body: Stack(
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) => InteractiveViewer(
+              child: Center(
+                child: Image.network(
+                  imageUrl,
+                  width: constraints.maxWidth,
+                  height: constraints.maxHeight,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, _, _) => const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.broken_image, color: Colors.grey, size: 64),
+                      SizedBox(height: 16),
+                      Text('Failed to load image',
+                          style: TextStyle(color: Colors.grey)),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
-        ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            left: 8,
+            child: IconButton(
+              icon: const Icon(Icons.close),
+              color: theme.colorScheme.onSurface,
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+        ],
       ),
     );
   }

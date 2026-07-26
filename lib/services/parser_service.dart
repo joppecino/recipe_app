@@ -124,7 +124,7 @@ class ScraperService {
     final tags = <String>[];
     final rawCuisine = json['recipeCuisine'];
     if (rawCuisine is String) {
-      tags.add(rawCuisine);
+      tags.addAll(rawCuisine.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty));
     } else if (rawCuisine is List) {
       tags.addAll(rawCuisine.map((e) => e.toString()));
     }

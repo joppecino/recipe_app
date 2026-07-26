@@ -168,6 +168,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
       ),
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.translucent,
         child: Column(
           children: [
             Padding(

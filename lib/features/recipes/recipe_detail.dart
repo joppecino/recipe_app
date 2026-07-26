@@ -111,7 +111,10 @@ class RecipeDetailScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.translucent,
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -235,6 +238,7 @@ class RecipeDetailScreen extends ConsumerWidget {
             ],
           ],
         ),
+      ),
       ),
     );
   }
