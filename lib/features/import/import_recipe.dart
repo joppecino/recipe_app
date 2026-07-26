@@ -8,6 +8,11 @@ import '../../database/database.dart';
 import '../../providers/providers.dart';
 import '../../services/parser_service.dart';
 
+String normalizeTag(String tag) {
+  if (tag.isEmpty) return tag;
+  return tag[0].toUpperCase() + tag.substring(1).toLowerCase();
+}
+
 List<String> _parseList(String json) {
   final decoded = jsonDecode(json);
   return (decoded as List).cast<String>();
@@ -40,6 +45,7 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
   final _tagControllers = <TextEditingController>[];
 
   bool _loading = false;
+  bool _dirtyAfterFetch = false;
   String? _error;
   ParsedRecipe? _original;
   bool get _isEditing => widget.existingRecipe != null;
@@ -53,19 +59,26 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
       if (existing.sourceUrl != null) {
         _urlController.text = existing.sourceUrl!;
       }
-      _ingredientControllers.addAll(_parseList(existing.ingredients)
-          .map((e) => TextEditingController(text: e)));
-      _instructionControllers.addAll(_parseList(existing.instructions)
-          .map((e) => TextEditingController(text: e)));
+      _ingredientControllers.addAll(
+        _parseList(
+          existing.ingredients,
+        ).map((e) => TextEditingController(text: e)),
+      );
+      _instructionControllers.addAll(
+        _parseList(
+          existing.instructions,
+        ).map((e) => TextEditingController(text: e)),
+      );
       final existingTags = _parseTags(existing.tags);
       _tagControllers.addAll(
-          existingTags.map((e) => TextEditingController(text: e)));
+        existingTags.map((e) => TextEditingController(text: normalizeTag(e))),
+      );
       _original = ParsedRecipe(
         title: existing.title,
         ingredients: _parseList(existing.ingredients),
         instructions: _parseList(existing.instructions),
         imageUrl: existing.imageUrl,
-        tags: existingTags,
+        tags: existingTags.map(normalizeTag).toList(),
       );
     }
   }
@@ -106,22 +119,32 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
 
       setState(() {
         _original = result;
+        _dirtyAfterFetch = true;
         _titleController.text = result.title;
-        for (final c in _ingredientControllers) { c.dispose(); }
+        for (final c in _ingredientControllers) {
+          c.dispose();
+        }
         _ingredientControllers
           ..clear()
-          ..addAll(result.ingredients
-              .map((e) => TextEditingController(text: e)));
-        for (final c in _instructionControllers) { c.dispose(); }
+          ..addAll(
+            result.ingredients.map((e) => TextEditingController(text: e)),
+          );
+        for (final c in _instructionControllers) {
+          c.dispose();
+        }
         _instructionControllers
           ..clear()
-          ..addAll(result.instructions
-              .map((e) => TextEditingController(text: e)));
-        for (final c in _tagControllers) { c.dispose(); }
+          ..addAll(
+            result.instructions.map((e) => TextEditingController(text: e)),
+          );
+        for (final c in _tagControllers) {
+          c.dispose();
+        }
         _tagControllers
           ..clear()
-          ..addAll(result.tags
-              .map((e) => TextEditingController(text: e)));
+          ..addAll(
+            result.tags.map((e) => TextEditingController(text: normalizeTag(e))),
+          );
         _loading = false;
       });
     } catch (e) {
@@ -173,6 +196,7 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
   }
 
   bool get _isClean {
+    if (_dirtyAfterFetch) return false;
     if (_original == null) return true;
     if (_titleController.text != _original!.title) return false;
     if (_ingredientControllers.length != _original!.ingredients.length) {
@@ -204,21 +228,32 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
 
   Future<void> _save() async {
     final db = ref.read(databaseProvider);
-    final ingredients =
-        jsonEncode(_ingredientControllers.map((c) => c.text).toList());
-    final instructions =
-        jsonEncode(_instructionControllers.map((c) => c.text).toList());
+    final ingredients = jsonEncode(
+      _ingredientControllers.map((c) => c.text).toList(),
+    );
+    final instructions = jsonEncode(
+      _instructionControllers.map((c) => c.text).toList(),
+    );
 
-    final tags = jsonEncode(_tagControllers.map((c) => c.text).where((t) => t.isNotEmpty).toList());
+    final tags = jsonEncode(
+      _tagControllers
+          .map((c) => normalizeTag(c.text))
+          .where((t) => t.isNotEmpty)
+          .toList()
+          .toSet()
+          .toList(),
+    );
 
     if (_isEditing) {
       final existing = widget.existingRecipe!;
-      db.updateRecipe(existing.copyWith(
-        title: _titleController.text,
-        ingredients: ingredients,
-        instructions: instructions,
-        tags: Value<String?>(tags),
-      ));
+      db.updateRecipe(
+        existing.copyWith(
+          title: _titleController.text,
+          ingredients: ingredients,
+          instructions: instructions,
+          tags: Value<String?>(tags),
+        ),
+      );
       if (mounted) Navigator.of(context).pop(true);
     } else {
       final recipe = RecipesCompanion.insert(
@@ -248,14 +283,17 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Discard changes?'),
         content: const Text(
-            'You have unsaved changes. Do you want to discard them?'),
+          'You have unsaved changes. Do you want to discard them?',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Discard')),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Discard'),
+          ),
         ],
       ),
     );
@@ -288,136 +326,108 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
             },
           ),
         ),
-        body: Column(
-          children: [
-            if (!_isEditing)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: Row(
+        body: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          transitionBuilder: (child, animation) => SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.25, 0),
+              end: Offset.zero,
+            ).animate(animation),
+            child: FadeTransition(opacity: animation, child: child),
+          ),
+          child: hasRecipe || _isEditing
+              ? Column(
+                  key: const ValueKey('form'),
                   children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _urlController,
-                        decoration: InputDecoration(
-                          hintText: 'Paste recipe URL...',
-                          prefixIcon: const Icon(Icons.link),
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          contentPadding:
-                              const EdgeInsets.symmetric(vertical: 0),
+                    if (_error != null)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          _error!,
+                          style: TextStyle(color: theme.colorScheme.error),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton.icon(
-                      onPressed: _loading ? null : _fetch,
-                      icon: _loading
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2),
-                            )
-                          : const Icon(Icons.download),
-                      label: Text(_loading ? '...' : 'Fetch'),
-                    ),
-                  ],
-                ),
-              ),
-            if (_error != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(_error!,
-                    style: TextStyle(color: theme.colorScheme.error)),
-              ),
-            if (hasRecipe)
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
-                    children: [
-                      if (_original?.imageUrl != null) ...[
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
-                            _original!.imageUrl!,
-                            width: double.infinity,
-                            height: 200,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => Container(
-                              height: 200,
-                              color: theme
-                                  .colorScheme.surfaceContainerHighest,
-                              child: const Center(
-                                  child: Icon(Icons.broken_image)),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            children: [
-                              Text('Title',
-                                  style: theme
-                                      .textTheme.titleSmall),
-                              const SizedBox(height: 8),
-                              TextField(
-                                controller: _titleController,
-                                decoration:
-                                    const InputDecoration(
-                                  border:
-                                      OutlineInputBorder(),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (_original?.imageUrl != null) ...[
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  _original!.imageUrl!,
+                                  width: double.infinity,
+                                  height: 200,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) => Container(
+                                    height: 200,
+                                    color: theme
+                                        .colorScheme
+                                        .surfaceContainerHighest,
+                                    child: const Center(
+                                      child: Icon(Icons.broken_image),
+                                    ),
+                                  ),
                                 ),
                               ),
+                              const SizedBox(height: 16),
                             ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment
-                                        .spaceBetween,
-                                children: [
-                                  Text('Tags',
-                                      style: theme
-                                          .textTheme.titleSmall),
-                                  IconButton(
-                                    onPressed: _addTag,
-                                    icon: const Icon(
-                                        Icons.add_circle_outline),
-                                  ),
-                                ],
+                            Card(
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Title',
+                                      style: theme.textTheme.titleSmall,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    TextField(
+                                      controller: _titleController,
+                                      decoration: const InputDecoration(
+                                        border: OutlineInputBorder(),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              ..._tagControllers
-                                  .asMap()
-                                  .entries
-                                  .map((entry) => Padding(
-                                        padding: const EdgeInsets
-                                            .only(
-                                            bottom: 8),
+                            ),
+                            const SizedBox(height: 8),
+                            Card(
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Tags',
+                                          style: theme.textTheme.titleSmall,
+                                        ),
+                                        IconButton(
+                                          onPressed: _addTag,
+                                          icon: const Icon(
+                                            Icons.add_circle_outline,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    ..._tagControllers.asMap().entries.map(
+                                      (entry) => Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 8,
+                                        ),
                                         child: Row(
                                           children: [
                                             Expanded(
-                                              child:
-                                                  TextField(
-                                                controller:
-                                                    entry
-                                                        .value,
+                                              child: TextField(
+                                                controller: entry.value,
                                                 decoration: InputDecoration(
                                                   border:
                                                       const OutlineInputBorder(),
@@ -428,73 +438,67 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
                                             ),
                                             IconButton(
                                               onPressed: () =>
-                                                  _removeTag(
-                                                      entry
-                                                          .key),
+                                                  _removeTag(entry.key),
                                               icon: const Icon(
-                                                  Icons.remove_circle_outline,
-                                                  color: Colors
-                                                      .red),
+                                                Icons.remove_circle_outline,
+                                                color: Colors.red,
+                                              ),
                                             ),
                                           ],
                                         ),
-                                      )),
-                              if (_tagControllers.isEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                      bottom: 8),
-                                  child: Text(
-                                      'No tags added yet. Tags from recipeCuisine will appear here.',
-                                      style: theme.textTheme
-                                          .bodySmall
-                                          ?.copyWith(
-                                          color: theme
-                                              .colorScheme
-                                              .outline)),
+                                      ),
+                                    ),
+                                    if (_tagControllers.isEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 8,
+                                        ),
+                                        child: Text(
+                                          'No tags added.',
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                                color:
+                                                    theme.colorScheme.outline,
+                                              ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment
-                                        .spaceBetween,
-                                children: [
-                                  Text('Ingredients',
-                                      style: theme
-                                          .textTheme.titleSmall),
-                                  IconButton(
-                                    onPressed:
-                                        _addIngredient,
-                                    icon: const Icon(
-                                        Icons.add_circle_outline),
-                                  ),
-                                ],
                               ),
-                              ..._ingredientControllers
-                                  .asMap()
-                                  .entries
-                                  .map((entry) => Padding(
-                                        padding: const EdgeInsets
-                                            .only(
-                                            bottom: 8),
+                            ),
+                            const SizedBox(height: 8),
+                            Card(
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Ingredients',
+                                          style: theme.textTheme.titleSmall,
+                                        ),
+                                        IconButton(
+                                          onPressed: _addIngredient,
+                                          icon: const Icon(
+                                            Icons.add_circle_outline,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    ..._ingredientControllers.asMap().entries.map(
+                                      (entry) => Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 8,
+                                        ),
                                         child: Row(
                                           children: [
                                             Expanded(
-                                              child:
-                                                  TextField(
-                                                controller:
-                                                    entry
-                                                        .value,
+                                              child: TextField(
+                                                controller: entry.value,
                                                 decoration: InputDecoration(
                                                   border:
                                                       const OutlineInputBorder(),
@@ -505,72 +509,63 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
                                             ),
                                             IconButton(
                                               onPressed: () =>
-                                                  _removeIngredient(
-                                                      entry
-                                                          .key),
+                                                  _removeIngredient(entry.key),
                                               icon: const Icon(
-                                                  Icons.remove_circle_outline,
-                                                  color: Colors
-                                                      .red),
+                                                Icons.remove_circle_outline,
+                                                color: Colors.red,
+                                              ),
                                             ),
                                           ],
                                         ),
-                                      )),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment
-                                        .spaceBetween,
-                                children: [
-                                  Text('Instructions',
-                                      style: theme
-                                          .textTheme.titleSmall),
-                                  IconButton(
-                                    onPressed:
-                                        _addInstruction,
-                                    icon: const Icon(
-                                        Icons.add_circle_outline),
-                                  ),
-                                ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              ..._instructionControllers
-                                  .asMap()
-                                  .entries
-                                  .map((entry) => Padding(
-                                        padding: const EdgeInsets
-                                            .only(
-                                            bottom: 8),
+                            ),
+                            const SizedBox(height: 8),
+                            Card(
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Instructions',
+                                          style: theme.textTheme.titleSmall,
+                                        ),
+                                        IconButton(
+                                          onPressed: _addInstruction,
+                                          icon: const Icon(
+                                            Icons.add_circle_outline,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    ..._instructionControllers.asMap().entries.map(
+                                      (entry) => Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 8,
+                                        ),
                                         child: Row(
                                           crossAxisAlignment:
-                                              CrossAxisAlignment
-                                                  .start,
+                                              CrossAxisAlignment.start,
                                           children: [
                                             SizedBox(
                                               width: 24,
                                               child: Text(
                                                 '${entry.key + 1}.',
-                                                style: theme
-                                                    .textTheme
-                                                    .bodyLarge,
+                                                style:
+                                                    theme.textTheme.bodyLarge,
                                               ),
                                             ),
                                             Expanded(
-                                              child:
-                                                  TextField(
-                                                controller:
-                                                    entry
-                                                        .value,
+                                              child: TextField(
+                                                controller: entry.value,
                                                 decoration: InputDecoration(
                                                   border:
                                                       const OutlineInputBorder(),
@@ -582,27 +577,75 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
                                             ),
                                             IconButton(
                                               onPressed: () =>
-                                                  _removeInstruction(
-                                                      entry
-                                                          .key),
+                                                  _removeInstruction(entry.key),
                                               icon: const Icon(
-                                                  Icons.remove_circle_outline,
-                                                  color: Colors
-                                                      .red),
+                                                Icons.remove_circle_outline,
+                                                color: Colors.red,
+                                              ),
                                             ),
                                           ],
                                         ),
-                                      )),
-                            ],
-                          ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 80),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 80),
-                    ],
+                    ),
+                  ],
+                )
+              : Center(
+                  key: const ValueKey('url'),
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextField(
+                          controller: _urlController,
+                          decoration: InputDecoration(
+                            hintText: 'Paste recipe URL...',
+                            prefixIcon: const Icon(Icons.link),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: FilledButton.icon(
+                            onPressed: _loading ? null : _fetch,
+                            icon: _loading
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.download),
+                            label: Text(
+                              _loading ? 'Fetching...' : 'Fetch Recipe',
+                            ),
+                          ),
+                        ),
+                        if (_error != null) ...[
+                          const SizedBox(height: 16),
+                          Text(
+                            _error!,
+                            style: TextStyle(color: theme.colorScheme.error),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
-          ],
         ),
         bottomNavigationBar: hasRecipe
             ? SafeArea(

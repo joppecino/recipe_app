@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -7,6 +8,11 @@ import '../../database/database.dart';
 import '../../providers/providers.dart';
 import '../import/import_recipe.dart';
 import 'recipe_card.dart';
+
+String normalizeTag(String tag) {
+  if (tag.isEmpty) return tag;
+  return tag[0].toUpperCase() + tag.substring(1).toLowerCase();
+}
 
 class RecipeListScreen extends ConsumerStatefulWidget {
   const RecipeListScreen({super.key});
@@ -19,10 +25,12 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
   Set<String> _selectedTags = {};
+  Timer? _debounceTimer;
 
   @override
   void dispose() {
     _searchController.dispose();
+    _debounceTimer?.cancel();
     super.dispose();
   }
 
@@ -33,7 +41,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
       try {
         final decoded = jsonDecode(recipe.tags!);
         for (final tag in decoded as List) {
-          tags.add(tag.toString());
+          tags.add(normalizeTag(tag.toString()));
         }
       } catch (_) {}
     }
@@ -52,7 +60,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
     if (recipe.tags == null) return false;
     try {
       final decoded = jsonDecode(recipe.tags!);
-      final recipeTags = (decoded as List).map((e) => e.toString()).toSet();
+      final recipeTags = (decoded as List).map((e) => normalizeTag(e.toString())).toSet();
       return _selectedTags.intersection(recipeTags).isNotEmpty;
     } catch (_) {
       return false;
@@ -136,7 +144,12 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
                   flex: 4,
                   child: TextField(
                     controller: _searchController,
-                    onChanged: (value) => setState(() => _searchQuery = value),
+                    onChanged: (value) {
+                      _debounceTimer?.cancel();
+                      _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+                        if (mounted) setState(() => _searchQuery = value);
+                      });
+                    },
                     decoration: InputDecoration(
                       hintText: 'Search recipes...',
                       prefixIcon: const Icon(Icons.search),
@@ -144,6 +157,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
                           ? IconButton(
                               icon: const Icon(Icons.clear),
                               onPressed: () {
+                                _debounceTimer?.cancel();
                                 _searchController.clear();
                                 setState(() => _searchQuery = '');
                               },
@@ -250,7 +264,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           final saved = await Navigator.of(context).push<bool>(
             MaterialPageRoute(
@@ -258,7 +272,8 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
           );
           if (saved == true) setState(() {});
         },
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text('Import Recipe'),
       ),
     );
   }
