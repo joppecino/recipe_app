@@ -7,12 +7,14 @@ class ParsedRecipe {
   final List<String> ingredients;
   final List<String> instructions;
   final String? imageUrl;
+  final List<String> tags;
 
   ParsedRecipe({
     required this.title,
     required this.ingredients,
     required this.instructions,
     this.imageUrl,
+    this.tags = const [],
   });
 }
 
@@ -119,11 +121,26 @@ class ScraperService {
       imageUrl = rawImage['url'] as String?;
     }
 
+    final tags = <String>[];
+    final rawCuisine = json['recipeCuisine'];
+    if (rawCuisine is String) {
+      tags.add(rawCuisine);
+    } else if (rawCuisine is List) {
+      tags.addAll(rawCuisine.map((e) => e.toString()));
+    }
+    final rawKeywords = json['keywords'];
+    if (rawKeywords is String) {
+      tags.addAll(rawKeywords.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty));
+    } else if (rawKeywords is List) {
+      tags.addAll(rawKeywords.map((e) => e.toString()));
+    }
+
     return ParsedRecipe(
       title: title,
       ingredients: ingredients,
       instructions: instructions,
       imageUrl: imageUrl,
+      tags: tags.toSet().toList(),
     );
   }
 }

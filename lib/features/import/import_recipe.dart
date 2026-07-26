@@ -13,6 +13,15 @@ List<String> _parseList(String json) {
   return (decoded as List).cast<String>();
 }
 
+List<String> _parseTags(String? json) {
+  if (json == null) return [];
+  try {
+    return _parseList(json);
+  } catch (_) {
+    return [];
+  }
+}
+
 class ImportRecipeScreen extends ConsumerStatefulWidget {
   final Recipe? existingRecipe;
 
@@ -28,6 +37,7 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
   final _titleController = TextEditingController();
   final _ingredientControllers = <TextEditingController>[];
   final _instructionControllers = <TextEditingController>[];
+  final _tagControllers = <TextEditingController>[];
 
   bool _loading = false;
   String? _error;
@@ -47,11 +57,15 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
           .map((e) => TextEditingController(text: e)));
       _instructionControllers.addAll(_parseList(existing.instructions)
           .map((e) => TextEditingController(text: e)));
+      final existingTags = _parseTags(existing.tags);
+      _tagControllers.addAll(
+          existingTags.map((e) => TextEditingController(text: e)));
       _original = ParsedRecipe(
         title: existing.title,
         ingredients: _parseList(existing.ingredients),
         instructions: _parseList(existing.instructions),
         imageUrl: existing.imageUrl,
+        tags: existingTags,
       );
     }
   }
@@ -64,6 +78,9 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
       c.dispose();
     }
     for (final c in _instructionControllers) {
+      c.dispose();
+    }
+    for (final c in _tagControllers) {
       c.dispose();
     }
     super.dispose();
@@ -90,13 +107,20 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
       setState(() {
         _original = result;
         _titleController.text = result.title;
+        for (final c in _ingredientControllers) { c.dispose(); }
         _ingredientControllers
           ..clear()
           ..addAll(result.ingredients
               .map((e) => TextEditingController(text: e)));
+        for (final c in _instructionControllers) { c.dispose(); }
         _instructionControllers
           ..clear()
           ..addAll(result.instructions
+              .map((e) => TextEditingController(text: e)));
+        for (final c in _tagControllers) { c.dispose(); }
+        _tagControllers
+          ..clear()
+          ..addAll(result.tags
               .map((e) => TextEditingController(text: e)));
         _loading = false;
       });
@@ -135,6 +159,19 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
     });
   }
 
+  void _addTag() {
+    setState(() {
+      _tagControllers.add(TextEditingController());
+    });
+  }
+
+  void _removeTag(int index) {
+    setState(() {
+      _tagControllers[index].dispose();
+      _tagControllers.removeAt(index);
+    });
+  }
+
   bool get _isClean {
     if (_original == null) return true;
     if (_titleController.text != _original!.title) return false;
@@ -154,6 +191,14 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
         return false;
       }
     }
+    if (_tagControllers.length != _original!.tags.length) {
+      return false;
+    }
+    for (var i = 0; i < _tagControllers.length; i++) {
+      if (_tagControllers[i].text != _original!.tags[i]) {
+        return false;
+      }
+    }
     return true;
   }
 
@@ -164,12 +209,15 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
     final instructions =
         jsonEncode(_instructionControllers.map((c) => c.text).toList());
 
+    final tags = jsonEncode(_tagControllers.map((c) => c.text).where((t) => t.isNotEmpty).toList());
+
     if (_isEditing) {
       final existing = widget.existingRecipe!;
       db.updateRecipe(existing.copyWith(
         title: _titleController.text,
         ingredients: ingredients,
         instructions: instructions,
+        tags: Value<String?>(tags),
       ));
       if (mounted) Navigator.of(context).pop(true);
     } else {
@@ -177,6 +225,7 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
         title: _titleController.text,
         ingredients: ingredients,
         instructions: instructions,
+        tags: Value<String?>(tags),
         imageUrl: _original?.imageUrl != null
             ? Value(_original!.imageUrl)
             : const Value.absent(),
@@ -327,6 +376,82 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
                                       OutlineInputBorder(),
                                 ),
                               ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment
+                                        .spaceBetween,
+                                children: [
+                                  Text('Tags',
+                                      style: theme
+                                          .textTheme.titleSmall),
+                                  IconButton(
+                                    onPressed: _addTag,
+                                    icon: const Icon(
+                                        Icons.add_circle_outline),
+                                  ),
+                                ],
+                              ),
+                              ..._tagControllers
+                                  .asMap()
+                                  .entries
+                                  .map((entry) => Padding(
+                                        padding: const EdgeInsets
+                                            .only(
+                                            bottom: 8),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child:
+                                                  TextField(
+                                                controller:
+                                                    entry
+                                                        .value,
+                                                decoration: InputDecoration(
+                                                  border:
+                                                      const OutlineInputBorder(),
+                                                  hintText:
+                                                      'Tag ${entry.key + 1}',
+                                                ),
+                                              ),
+                                            ),
+                                            IconButton(
+                                              onPressed: () =>
+                                                  _removeTag(
+                                                      entry
+                                                          .key),
+                                              icon: const Icon(
+                                                  Icons.remove_circle_outline,
+                                                  color: Colors
+                                                      .red),
+                                            ),
+                                          ],
+                                        ),
+                                      )),
+                              if (_tagControllers.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                      bottom: 8),
+                                  child: Text(
+                                      'No tags added yet. Tags from recipeCuisine will appear here.',
+                                      style: theme.textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                          color: theme
+                                              .colorScheme
+                                              .outline)),
+                                ),
                             ],
                           ),
                         ),
