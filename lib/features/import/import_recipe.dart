@@ -239,38 +239,6 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
     _instructionBump.value++;
   }
 
-  Future<void> _editYield() async {
-    final controller = TextEditingController(text: _yieldController.text);
-    final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Yield / Servings'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-            hintText: 'e.g. 4 servings',
-          ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(controller.text),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
-    if (result != null && mounted) {
-      setState(() => _yieldController.text = result);
-    }
-  }
-
   bool get _isClean {
     if (_dirtyAfterFetch) return false;
     if (_original == null) return true;
@@ -666,37 +634,11 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    GestureDetector(
-                                      onTap: () => _editYield(),
-                                      child: Row(
-                                        children: [
-                                          Text(
-                                            'Ingredients',
-                                            style:
-                                                theme.textTheme.titleSmall,
-                                          ),
-                                          if (_yieldController
-                                              .text.isNotEmpty) ...[
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              '(${_yieldController.text})',
-                                              style: theme
-                                                  .textTheme.titleSmall
-                                                  ?.copyWith(
-                                                color: theme
-                                                    .colorScheme.primary,
-                                              ),
-                                            ),
-                                          ],
-                                          const SizedBox(width: 8),
-                                          Icon(
-                                            Icons.edit,
-                                            size: 14,
-                                            color: theme
-                                                .colorScheme.outline,
-                                          ),
-                                        ],
-                                      ),
+                                    Text(
+                                      _yieldController.text.isNotEmpty
+                                          ? 'Ingredients (${_yieldController.text} portions)'
+                                          : 'Ingredients',
+                                      style: theme.textTheme.titleSmall,
                                     ),
                                     const SizedBox(height: 12),
                                     ValueListenableBuilder<int>(
