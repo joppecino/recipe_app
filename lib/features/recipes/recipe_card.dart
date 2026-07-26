@@ -44,6 +44,7 @@ class RecipeCard extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: ListTile(
         onTap: () async {
+          FocusScope.of(context).unfocus();
           final changed = await Navigator.of(context).push<bool>(
             MaterialPageRoute(
                 builder: (_) => RecipeDetailScreen(recipe: recipe)),

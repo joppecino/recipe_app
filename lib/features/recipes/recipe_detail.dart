@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../database/database.dart';
 import '../../providers/providers.dart';
@@ -217,9 +218,16 @@ class RecipeDetailScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               Text('Source', style: theme.textTheme.titleMedium),
               const SizedBox(height: 8),
-              SelectableText(recipe.sourceUrl!,
-                  style: TextStyle(color: theme.colorScheme.primary)),
-              const SizedBox(height: 16),
+              GestureDetector(
+                onTap: () => launchUrl(Uri.parse(recipe.sourceUrl!),
+                    mode: LaunchMode.externalApplication),
+                child: Text(recipe.sourceUrl!,
+                    style: TextStyle(
+                      color: theme.colorScheme.primary,
+                      decoration: TextDecoration.underline,
+                    )),
+              ),
+              const SizedBox(height: 32),
             ],
           ],
         ),

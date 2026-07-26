@@ -23,6 +23,7 @@ class RecipeListScreen extends ConsumerStatefulWidget {
 
 class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
   final _searchController = TextEditingController();
+  final _searchFocusNode = FocusNode();
   String _searchQuery = '';
   Set<String> _selectedTags = {};
   Timer? _debounceTimer;
@@ -30,9 +31,12 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocusNode.dispose();
     _debounceTimer?.cancel();
     super.dispose();
   }
+
+  void _unfocusSearch() => _searchFocusNode.unfocus();
 
   Set<String> _collectTags(List<Recipe> recipes) {
     final tags = <String>{};
@@ -93,19 +97,29 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
                           style: TextStyle(color: Colors.grey)),
                     )
                   else
-                    ...allTags.map((tag) => CheckboxListTile(
-                          title: Text(tag),
-                          value: localSelection.contains(tag),
-                          onChanged: (checked) {
-                            setSheetState(() {
-                              if (checked == true) {
-                                localSelection.add(tag);
-                              } else {
-                                localSelection.remove(tag);
-                              }
-                            });
-                          },
-                        )),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(context).size.height * 0.4,
+                      ),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: allTags.map((tag) => CheckboxListTile(
+                                title: Text(tag),
+                                value: localSelection.contains(tag),
+                                onChanged: (checked) {
+                                  setSheetState(() {
+                                    if (checked == true) {
+                                      localSelection.add(tag);
+                                    } else {
+                                      localSelection.remove(tag);
+                                    }
+                                  });
+                                },
+                              )).toList(),
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
@@ -152,16 +166,19 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: Row(
               children: [
                 Expanded(
                   flex: 4,
                   child: TextField(
                     controller: _searchController,
+                    focusNode: _searchFocusNode,
                     onChanged: (value) {
                       _debounceTimer?.cancel();
                       _debounceTimer = Timer(const Duration(milliseconds: 300), () {
@@ -200,6 +217,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
                     height: 48,
                     child: IconButton(
                       onPressed: () async {
+                      _unfocusSearch();
                       final recipes = await db.getAllRecipes();
                       if (mounted) _openFilterSheet(recipes);
                     },
@@ -314,8 +332,10 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
           ),
         ],
       ),
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
+          _unfocusSearch();
           final saved = await Navigator.of(context).push<bool>(
             MaterialPageRoute(
                 builder: (_) => const ImportRecipeScreen()),
