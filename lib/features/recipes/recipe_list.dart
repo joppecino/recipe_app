@@ -27,6 +27,33 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
   String _searchQuery = '';
   Set<String> _selectedTags = {};
   Timer? _debounceTimer;
+  List<Recipe> _allRecipes = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecipes();
+  }
+
+  Future<void> _loadRecipes() async {
+    final db = ref.read(databaseProvider);
+    final recipes = await db.getAllRecipes();
+    if (mounted) {
+      setState(() {
+        _allRecipes = recipes;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _refreshRecipes() async {
+    final db = ref.read(databaseProvider);
+    final recipes = await db.getAllRecipes();
+    if (mounted) {
+      setState(() => _allRecipes = recipes);
+    }
+  }
 
   @override
   void dispose() {
@@ -37,6 +64,101 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
   }
 
   void _unfocusSearch() => _searchFocusNode.unfocus();
+
+  Widget _buildRecipeList() {
+    final filtered = _allRecipes.where(
+        (r) => _matchesSearch(r) && _matchesTags(r));
+
+    if (_allRecipes.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _refreshRecipes,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.5,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.menu_book,
+                      size: 64,
+                      color: Theme.of(context).colorScheme.outline),
+                  const SizedBox(height: 16),
+                  Text('No recipes yet',
+                      style: Theme.of(context).textTheme.titleLarge),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final hasActiveFilter = _searchQuery.isNotEmpty || _selectedTags.isNotEmpty;
+
+    if (filtered.isEmpty && hasActiveFilter) {
+      return RefreshIndicator(
+        onRefresh: _refreshRecipes,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: SizedBox(
+            height: MediaQuery.of(context).size.height * 0.5,
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.search_off,
+                      size: 64,
+                      color: Theme.of(context).colorScheme.outline),
+                  const SizedBox(height: 16),
+                  Text('No recipes match your search',
+                      style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () {
+                      _searchController.clear();
+                      setState(() {
+                        _searchQuery = '';
+                        _selectedTags = {};
+                      });
+                    },
+                    child: const Text('Clear filters'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _refreshRecipes,
+      child: ListView.builder(
+        itemCount: filtered.length,
+        itemBuilder: (context, index) {
+          final recipe = filtered.elementAt(index);
+          return TweenAnimationBuilder<double>(
+            key: ValueKey(recipe.id),
+            tween: Tween(begin: 0.0, end: 1.0),
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, child) => Opacity(
+              opacity: value,
+              child: Transform.translate(
+                offset: Offset(30 * (1 - value), 0),
+                child: child,
+              ),
+            ),
+            child: RecipeCard(
+              recipe: recipe,
+              onChanged: _refreshRecipes,
+            ),
+          );
+        },
+      ),
+    );
+  }
 
   Set<String> _collectTags(List<Recipe> recipes) {
     final tags = <String>{};
@@ -73,12 +195,12 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
 
   void _openFilterSheet(List<Recipe> recipes) {
     final allTags = _collectTags(recipes).toList()..sort();
+    var localSelection = Set<String>.from(_selectedTags);
+    var didClear = false;
 
     showModalBottomSheet(
       context: context,
       builder: (ctx) {
-        var localSelection = Set<String>.from(_selectedTags);
-
         return StatefulBuilder(
           builder: (context, setSheetState) => SafeArea(
             child: Padding(
@@ -120,17 +242,20 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
                         ),
                       ),
                     ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () {
-                        setState(() => _selectedTags = localSelection);
-                        Navigator.of(ctx).pop();
-                      },
-                      child: const Text('Apply Filter'),
+                  if (_selectedTags.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          didClear = true;
+                          setState(() => _selectedTags = {});
+                          Navigator.of(ctx).pop();
+                        },
+                        child: const Text('Clear filters'),
+                      ),
                     ),
-                  ),
+                  ],
                   const SizedBox(height: 16),
                 ],
               ),
@@ -138,14 +263,15 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
           ),
         );
       },
-    );
+    ).then((_) {
+      if (mounted && !didClear) {
+        setState(() => _selectedTags = localSelection);
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final db = ref.watch(databaseProvider);
-    final hasActiveFilter = _searchQuery.isNotEmpty || _selectedTags.isNotEmpty;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Recipes'),
@@ -217,16 +343,19 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
                   child: SizedBox(
                     height: 48,
                     child: IconButton(
-                      onPressed: () async {
+                      onPressed: () {
                       _unfocusSearch();
-                      final recipes = await db.getAllRecipes();
-                      if (mounted) _openFilterSheet(recipes);
+                      _openFilterSheet(_allRecipes);
                     },
-                      icon: Icon(
-                        Icons.filter_list,
-                        color: _selectedTags.isNotEmpty
-                            ? Theme.of(context).colorScheme.primary
-                            : null,
+                      icon: Badge(
+                        isLabelVisible: _selectedTags.isNotEmpty,
+                        smallSize: 8,
+                        child: Icon(
+                          Icons.filter_list,
+                          color: _selectedTags.isNotEmpty
+                              ? Theme.of(context).colorScheme.primary
+                              : null,
+                        ),
                       ),
                     ),
                   ),
@@ -235,101 +364,9 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
             ),
           ),
           Expanded(
-            child: FutureBuilder<List<Recipe>>(
-              future: db.getAllRecipes(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                }
-                final allRecipes = snapshot.data ?? [];
-                final filtered = allRecipes.where(
-                    (r) => _matchesSearch(r) && _matchesTags(r));
-
-                if (allRecipes.isEmpty) {
-                  return RefreshIndicator(
-                    onRefresh: () async {
-                      await Future.delayed(const Duration(milliseconds: 400));
-                      setState(() {});
-                    },
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.5,
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.menu_book,
-                                  size: 64,
-                                  color: Theme.of(context).colorScheme.outline),
-                              const SizedBox(height: 16),
-                              Text('No recipes yet',
-                                  style: Theme.of(context).textTheme.titleLarge),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }
-
-                if (filtered.isEmpty && hasActiveFilter) {
-                  return RefreshIndicator(
-                    onRefresh: () async {
-                      await Future.delayed(const Duration(milliseconds: 400));
-                      setState(() {});
-                    },
-                    child: SingleChildScrollView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      child: SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.5,
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.search_off,
-                                  size: 64,
-                                  color: Theme.of(context).colorScheme.outline),
-                              const SizedBox(height: 16),
-                              Text('No recipes match your search',
-                                  style: Theme.of(context).textTheme.titleMedium),
-                              const SizedBox(height: 8),
-                              TextButton(
-                                onPressed: () {
-                                  _searchController.clear();
-                                  setState(() {
-                                    _searchQuery = '';
-                                    _selectedTags = {};
-                                  });
-                                },
-                                child: const Text('Clear filters'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }
-
-                return RefreshIndicator(
-                  onRefresh: () async {
-                    setState(() {});
-                  },
-                  child: ListView.builder(
-                    itemCount: filtered.length,
-                    itemBuilder: (context, index) =>
-                        RecipeCard(
-                          recipe: filtered.elementAt(index),
-                          onChanged: () => setState(() {}),
-                        ),
-                  ),
-                );
-              },
-            ),
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _buildRecipeList(),
           ),
         ],
       ),
@@ -341,7 +378,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
             MaterialPageRoute(
                 builder: (_) => const ImportRecipeScreen()),
           );
-          if (saved == true) setState(() {});
+          if (saved == true) _loadRecipes();
         },
         icon: const Icon(Icons.add),
         label: const Text('Import Recipe'),
