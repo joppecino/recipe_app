@@ -3,6 +3,8 @@ import 'package:drift/drift.dart';
 class Recipes extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get title => text()();
+  TextColumn? get description => text().nullable()();
+  TextColumn? get recipeYield => text().nullable()();
   TextColumn get ingredients => text()();
   TextColumn get instructions => text()();
   TextColumn? get imageUrl => text().nullable()();

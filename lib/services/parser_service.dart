@@ -4,6 +4,8 @@ import 'package:http/http.dart' as http;
 
 class ParsedRecipe {
   final String title;
+  final String? description;
+  final String? yield;
   final List<String> ingredients;
   final List<String> instructions;
   final String? imageUrl;
@@ -11,6 +13,8 @@ class ParsedRecipe {
 
   ParsedRecipe({
     required this.title,
+    this.description,
+    this.yield,
     required this.ingredients,
     required this.instructions,
     this.imageUrl,
@@ -135,8 +139,19 @@ class ScraperService {
       tags.addAll(rawKeywords.map((e) => e.toString()));
     }
 
+    final description = json['description'] as String?;
+    String? yield;
+    final rawYield = json['recipeYield'];
+    if (rawYield is String) {
+      yield = rawYield;
+    } else if (rawYield is List && rawYield.isNotEmpty) {
+      yield = rawYield.first.toString();
+    }
+
     return ParsedRecipe(
       title: title,
+      description: description,
+      yield: yield,
       ingredients: ingredients,
       instructions: instructions,
       imageUrl: imageUrl,

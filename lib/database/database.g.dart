@@ -30,6 +30,28 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, Recipe> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _recipeYieldMeta = const VerificationMeta(
+    'recipeYield',
+  );
+  @override
+  late final GeneratedColumn<String> recipeYield = GeneratedColumn<String>(
+    'recipe_yield',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _ingredientsMeta = const VerificationMeta(
     'ingredients',
   );
@@ -98,6 +120,8 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, Recipe> {
   List<GeneratedColumn> get $columns => [
     id,
     title,
+    description,
+    recipeYield,
     ingredients,
     instructions,
     imageUrl,
@@ -127,6 +151,24 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, Recipe> {
       );
     } else if (isInserting) {
       context.missing(_titleMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('recipe_yield')) {
+      context.handle(
+        _recipeYieldMeta,
+        recipeYield.isAcceptableOrUnknown(
+          data['recipe_yield']!,
+          _recipeYieldMeta,
+        ),
+      );
     }
     if (data.containsKey('ingredients')) {
       context.handle(
@@ -193,6 +235,14 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, Recipe> {
         DriftSqlType.string,
         data['${effectivePrefix}title'],
       )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      ),
+      recipeYield: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}recipe_yield'],
+      ),
       ingredients: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}ingredients'],
@@ -229,6 +279,8 @@ class $RecipesTable extends Recipes with TableInfo<$RecipesTable, Recipe> {
 class Recipe extends DataClass implements Insertable<Recipe> {
   final int id;
   final String title;
+  final String? description;
+  final String? recipeYield;
   final String ingredients;
   final String instructions;
   final String? imageUrl;
@@ -238,6 +290,8 @@ class Recipe extends DataClass implements Insertable<Recipe> {
   const Recipe({
     required this.id,
     required this.title,
+    this.description,
+    this.recipeYield,
     required this.ingredients,
     required this.instructions,
     this.imageUrl,
@@ -250,6 +304,12 @@ class Recipe extends DataClass implements Insertable<Recipe> {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['title'] = Variable<String>(title);
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    if (!nullToAbsent || recipeYield != null) {
+      map['recipe_yield'] = Variable<String>(recipeYield);
+    }
     map['ingredients'] = Variable<String>(ingredients);
     map['instructions'] = Variable<String>(instructions);
     if (!nullToAbsent || imageUrl != null) {
@@ -269,6 +329,12 @@ class Recipe extends DataClass implements Insertable<Recipe> {
     return RecipesCompanion(
       id: Value(id),
       title: Value(title),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+      recipeYield: recipeYield == null && nullToAbsent
+          ? const Value.absent()
+          : Value(recipeYield),
       ingredients: Value(ingredients),
       instructions: Value(instructions),
       imageUrl: imageUrl == null && nullToAbsent
@@ -290,6 +356,8 @@ class Recipe extends DataClass implements Insertable<Recipe> {
     return Recipe(
       id: serializer.fromJson<int>(json['id']),
       title: serializer.fromJson<String>(json['title']),
+      description: serializer.fromJson<String?>(json['description']),
+      recipeYield: serializer.fromJson<String?>(json['recipeYield']),
       ingredients: serializer.fromJson<String>(json['ingredients']),
       instructions: serializer.fromJson<String>(json['instructions']),
       imageUrl: serializer.fromJson<String?>(json['imageUrl']),
@@ -304,6 +372,8 @@ class Recipe extends DataClass implements Insertable<Recipe> {
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'title': serializer.toJson<String>(title),
+      'description': serializer.toJson<String?>(description),
+      'recipeYield': serializer.toJson<String?>(recipeYield),
       'ingredients': serializer.toJson<String>(ingredients),
       'instructions': serializer.toJson<String>(instructions),
       'imageUrl': serializer.toJson<String?>(imageUrl),
@@ -316,6 +386,8 @@ class Recipe extends DataClass implements Insertable<Recipe> {
   Recipe copyWith({
     int? id,
     String? title,
+    Value<String?> description = const Value.absent(),
+    Value<String?> recipeYield = const Value.absent(),
     String? ingredients,
     String? instructions,
     Value<String?> imageUrl = const Value.absent(),
@@ -325,6 +397,8 @@ class Recipe extends DataClass implements Insertable<Recipe> {
   }) => Recipe(
     id: id ?? this.id,
     title: title ?? this.title,
+    description: description.present ? description.value : this.description,
+    recipeYield: recipeYield.present ? recipeYield.value : this.recipeYield,
     ingredients: ingredients ?? this.ingredients,
     instructions: instructions ?? this.instructions,
     imageUrl: imageUrl.present ? imageUrl.value : this.imageUrl,
@@ -336,6 +410,12 @@ class Recipe extends DataClass implements Insertable<Recipe> {
     return Recipe(
       id: data.id.present ? data.id.value : this.id,
       title: data.title.present ? data.title.value : this.title,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      recipeYield: data.recipeYield.present
+          ? data.recipeYield.value
+          : this.recipeYield,
       ingredients: data.ingredients.present
           ? data.ingredients.value
           : this.ingredients,
@@ -354,6 +434,8 @@ class Recipe extends DataClass implements Insertable<Recipe> {
     return (StringBuffer('Recipe(')
           ..write('id: $id, ')
           ..write('title: $title, ')
+          ..write('description: $description, ')
+          ..write('recipeYield: $recipeYield, ')
           ..write('ingredients: $ingredients, ')
           ..write('instructions: $instructions, ')
           ..write('imageUrl: $imageUrl, ')
@@ -368,6 +450,8 @@ class Recipe extends DataClass implements Insertable<Recipe> {
   int get hashCode => Object.hash(
     id,
     title,
+    description,
+    recipeYield,
     ingredients,
     instructions,
     imageUrl,
@@ -381,6 +465,8 @@ class Recipe extends DataClass implements Insertable<Recipe> {
       (other is Recipe &&
           other.id == this.id &&
           other.title == this.title &&
+          other.description == this.description &&
+          other.recipeYield == this.recipeYield &&
           other.ingredients == this.ingredients &&
           other.instructions == this.instructions &&
           other.imageUrl == this.imageUrl &&
@@ -392,6 +478,8 @@ class Recipe extends DataClass implements Insertable<Recipe> {
 class RecipesCompanion extends UpdateCompanion<Recipe> {
   final Value<int> id;
   final Value<String> title;
+  final Value<String?> description;
+  final Value<String?> recipeYield;
   final Value<String> ingredients;
   final Value<String> instructions;
   final Value<String?> imageUrl;
@@ -401,6 +489,8 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
   const RecipesCompanion({
     this.id = const Value.absent(),
     this.title = const Value.absent(),
+    this.description = const Value.absent(),
+    this.recipeYield = const Value.absent(),
     this.ingredients = const Value.absent(),
     this.instructions = const Value.absent(),
     this.imageUrl = const Value.absent(),
@@ -411,6 +501,8 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
   RecipesCompanion.insert({
     this.id = const Value.absent(),
     required String title,
+    this.description = const Value.absent(),
+    this.recipeYield = const Value.absent(),
     required String ingredients,
     required String instructions,
     this.imageUrl = const Value.absent(),
@@ -424,6 +516,8 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
   static Insertable<Recipe> custom({
     Expression<int>? id,
     Expression<String>? title,
+    Expression<String>? description,
+    Expression<String>? recipeYield,
     Expression<String>? ingredients,
     Expression<String>? instructions,
     Expression<String>? imageUrl,
@@ -434,6 +528,8 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (title != null) 'title': title,
+      if (description != null) 'description': description,
+      if (recipeYield != null) 'recipe_yield': recipeYield,
       if (ingredients != null) 'ingredients': ingredients,
       if (instructions != null) 'instructions': instructions,
       if (imageUrl != null) 'image_url': imageUrl,
@@ -446,6 +542,8 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
   RecipesCompanion copyWith({
     Value<int>? id,
     Value<String>? title,
+    Value<String?>? description,
+    Value<String?>? recipeYield,
     Value<String>? ingredients,
     Value<String>? instructions,
     Value<String?>? imageUrl,
@@ -456,6 +554,8 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
     return RecipesCompanion(
       id: id ?? this.id,
       title: title ?? this.title,
+      description: description ?? this.description,
+      recipeYield: recipeYield ?? this.recipeYield,
       ingredients: ingredients ?? this.ingredients,
       instructions: instructions ?? this.instructions,
       imageUrl: imageUrl ?? this.imageUrl,
@@ -473,6 +573,12 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
     }
     if (title.present) {
       map['title'] = Variable<String>(title.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (recipeYield.present) {
+      map['recipe_yield'] = Variable<String>(recipeYield.value);
     }
     if (ingredients.present) {
       map['ingredients'] = Variable<String>(ingredients.value);
@@ -500,6 +606,8 @@ class RecipesCompanion extends UpdateCompanion<Recipe> {
     return (StringBuffer('RecipesCompanion(')
           ..write('id: $id, ')
           ..write('title: $title, ')
+          ..write('description: $description, ')
+          ..write('recipeYield: $recipeYield, ')
           ..write('ingredients: $ingredients, ')
           ..write('instructions: $instructions, ')
           ..write('imageUrl: $imageUrl, ')
@@ -526,6 +634,8 @@ typedef $$RecipesTableCreateCompanionBuilder =
     RecipesCompanion Function({
       Value<int> id,
       required String title,
+      Value<String?> description,
+      Value<String?> recipeYield,
       required String ingredients,
       required String instructions,
       Value<String?> imageUrl,
@@ -537,6 +647,8 @@ typedef $$RecipesTableUpdateCompanionBuilder =
     RecipesCompanion Function({
       Value<int> id,
       Value<String> title,
+      Value<String?> description,
+      Value<String?> recipeYield,
       Value<String> ingredients,
       Value<String> instructions,
       Value<String?> imageUrl,
@@ -561,6 +673,16 @@ class $$RecipesTableFilterComposer
 
   ColumnFilters<String> get title => $composableBuilder(
     column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get recipeYield => $composableBuilder(
+    column: $table.recipeYield,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -614,6 +736,16 @@ class $$RecipesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get recipeYield => $composableBuilder(
+    column: $table.recipeYield,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get ingredients => $composableBuilder(
     column: $table.ingredients,
     builder: (column) => ColumnOrderings(column),
@@ -659,6 +791,16 @@ class $$RecipesTableAnnotationComposer
 
   GeneratedColumn<String> get title =>
       $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get recipeYield => $composableBuilder(
+    column: $table.recipeYield,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get ingredients => $composableBuilder(
     column: $table.ingredients,
@@ -713,6 +855,8 @@ class $$RecipesTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 Value<String> title = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<String?> recipeYield = const Value.absent(),
                 Value<String> ingredients = const Value.absent(),
                 Value<String> instructions = const Value.absent(),
                 Value<String?> imageUrl = const Value.absent(),
@@ -722,6 +866,8 @@ class $$RecipesTableTableManager
               }) => RecipesCompanion(
                 id: id,
                 title: title,
+                description: description,
+                recipeYield: recipeYield,
                 ingredients: ingredients,
                 instructions: instructions,
                 imageUrl: imageUrl,
@@ -733,6 +879,8 @@ class $$RecipesTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 required String title,
+                Value<String?> description = const Value.absent(),
+                Value<String?> recipeYield = const Value.absent(),
                 required String ingredients,
                 required String instructions,
                 Value<String?> imageUrl = const Value.absent(),
@@ -742,6 +890,8 @@ class $$RecipesTableTableManager
               }) => RecipesCompanion.insert(
                 id: id,
                 title: title,
+                description: description,
+                recipeYield: recipeYield,
                 ingredients: ingredients,
                 instructions: instructions,
                 imageUrl: imageUrl,

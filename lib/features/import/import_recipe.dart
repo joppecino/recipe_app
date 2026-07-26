@@ -41,6 +41,8 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
   final _urlController = TextEditingController();
   final _scraper = ScraperService();
   final _titleController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _yieldController = TextEditingController();
   final _ingredientControllers = <TextEditingController>[];
   final _instructionControllers = <TextEditingController>[];
   final _tagControllers = <TextEditingController>[];
@@ -60,6 +62,12 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
     final existing = widget.existingRecipe;
     if (existing != null) {
       _titleController.text = existing.title;
+      if (existing.description != null) {
+        _descriptionController.text = existing.description!;
+      }
+      if (existing.recipeYield != null) {
+        _yieldController.text = existing.recipeYield!;
+      }
       if (existing.sourceUrl != null) {
         _urlController.text = existing.sourceUrl!;
       }
@@ -79,6 +87,8 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
       );
       _original = ParsedRecipe(
         title: existing.title,
+        description: existing.description,
+        yield: existing.recipeYield,
         ingredients: _parseList(existing.ingredients),
         instructions: _parseList(existing.instructions),
         imageUrl: existing.imageUrl,
@@ -91,6 +101,8 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
   void dispose() {
     _urlController.dispose();
     _titleController.dispose();
+    _descriptionController.dispose();
+    _yieldController.dispose();
     for (final c in _ingredientControllers) {
       c.dispose();
     }
@@ -107,6 +119,16 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
   }
 
   Future<void> _fetch() async {
+    final url = _urlController.text.trim();
+    if (url.isEmpty) {
+      setState(() => _error = 'Url missing.');
+      return;
+    }
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      setState(() => _error = 'URL is invalid');
+      return;
+    }
+
     setState(() {
       _loading = true;
       _error = null;
@@ -128,6 +150,8 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
         _original = result;
         _dirtyAfterFetch = true;
         _titleController.text = result.title;
+        _descriptionController.text = result.description ?? '';
+        _yieldController.text = result.yield ?? '';
         for (final c in _ingredientControllers) {
           c.dispose();
         }
@@ -214,10 +238,44 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
     _instructionBump.value++;
   }
 
+  Future<void> _editYield() async {
+    final controller = TextEditingController(text: _yieldController.text);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Yield / Servings'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            hintText: 'e.g. 4 servings',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (result != null && mounted) {
+      setState(() => _yieldController.text = result);
+    }
+  }
+
   bool get _isClean {
     if (_dirtyAfterFetch) return false;
     if (_original == null) return true;
     if (_titleController.text != _original!.title) return false;
+    if (_descriptionController.text != (_original!.description ?? '')) return false;
+    if (_yieldController.text != (_original!.yield ?? '')) return false;
     if (_ingredientControllers.length != _original!.ingredients.length) {
       return false;
     }
@@ -268,6 +326,12 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
       db.updateRecipe(
         existing.copyWith(
           title: _titleController.text,
+          description: Value<String?>(_descriptionController.text.isNotEmpty
+              ? _descriptionController.text
+              : null),
+          recipeYield: Value<String?>(_yieldController.text.isNotEmpty
+              ? _yieldController.text
+              : null),
           ingredients: ingredients,
           instructions: instructions,
           tags: Value<String?>(tags),
@@ -277,6 +341,12 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
     } else {
       final recipe = RecipesCompanion.insert(
         title: _titleController.text,
+        description: Value<String?>(_descriptionController.text.isNotEmpty
+            ? _descriptionController.text
+            : null),
+        recipeYield: Value<String?>(_yieldController.text.isNotEmpty
+            ? _yieldController.text
+            : null),
         ingredients: ingredients,
         instructions: instructions,
         tags: Value<String?>(tags),
@@ -430,12 +500,27 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
                                       'Title',
                                       style: theme.textTheme.titleSmall,
                                     ),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 12),
                                     TextField(
                                       controller: _titleController,
                                       decoration: const InputDecoration(
                                         border: OutlineInputBorder(),
                                       ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'Description',
+                                      style: theme.textTheme.titleSmall,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    TextField(
+                                      controller: _descriptionController,
+                                      decoration: const InputDecoration(
+                                        border: OutlineInputBorder(),
+                                        hintText: 'Description',
+                                      ),
+                                      minLines: 3,
+                                      maxLines: 6,
                                     ),
                                   ],
                                 ),
@@ -452,6 +537,7 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
                                       'Tags',
                                       style: theme.textTheme.titleSmall,
                                     ),
+                                    const SizedBox(height: 12),
                                     ValueListenableBuilder<int>(
                                       valueListenable: _tagBump,
                                       builder: (context, _, _) => Column(
@@ -573,10 +659,39 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      'Ingredients',
-                                      style: theme.textTheme.titleSmall,
+                                    GestureDetector(
+                                      onTap: () => _editYield(),
+                                      child: Row(
+                                        children: [
+                                          Text(
+                                            'Ingredients',
+                                            style:
+                                                theme.textTheme.titleSmall,
+                                          ),
+                                          if (_yieldController
+                                              .text.isNotEmpty) ...[
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              '(${_yieldController.text})',
+                                              style: theme
+                                                  .textTheme.titleSmall
+                                                  ?.copyWith(
+                                                color: theme
+                                                    .colorScheme.primary,
+                                              ),
+                                            ),
+                                          ],
+                                          const SizedBox(width: 8),
+                                          Icon(
+                                            Icons.edit,
+                                            size: 14,
+                                            color: theme
+                                                .colorScheme.outline,
+                                          ),
+                                        ],
+                                      ),
                                     ),
+                                    const SizedBox(height: 12),
                                     ValueListenableBuilder<int>(
                                       valueListenable: _ingredientBump,
                                       builder: (context, _, _) => Column(
@@ -692,6 +807,7 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
                                       'Instructions',
                                       style: theme.textTheme.titleSmall,
                                     ),
+                                    const SizedBox(height: 12),
                                     ValueListenableBuilder<int>(
                                       valueListenable: _instructionBump,
                                       builder: (context, _, _) => Column(
@@ -730,7 +846,7 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
                                                 child: Row(
                                                   crossAxisAlignment:
                                                       CrossAxisAlignment
-                                                          .start,
+                                                          .center,
                                                   children: [
                                                     ReorderableDragStartListener(
                                                       index: index,

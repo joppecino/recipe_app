@@ -168,8 +168,19 @@ class RecipeDetailScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
             ],
-            Text('Ingredients', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
+            if (recipe.description != null && recipe.description!.isNotEmpty) ...[
+              Text(recipe.description!,
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              const SizedBox(height: 16),
+            ],
+            Text(
+              recipe.recipeYield != null && recipe.recipeYield!.isNotEmpty
+                  ? 'Ingredients (${recipe.recipeYield})'
+                  : 'Ingredients',
+              style: theme.textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -192,7 +203,7 @@ class RecipeDetailScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             Text('Instructions', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
