@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../providers/providers.dart';
 
@@ -101,18 +102,19 @@ class SettingsScreen extends ConsumerWidget {
 
     if (!context.mounted) return;
 
-    final dir = await getDownloadsDirectory();
+    final dir = await getApplicationDocumentsDirectory();
     final fileName = 'recipe_backup_${DateTime.now().millisecondsSinceEpoch}.json';
-    final file = File('${(dir ?? await getApplicationDocumentsDirectory()).path}/$fileName');
-
+    final file = File('${dir.path}/$fileName');
     await file.writeAsString(json);
 
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(content: Text('Backup saved to ${file.path}')),
-      );
+
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(file.path)],
+        text: 'Recipe Backup',
+      ),
+    );
   }
 }
 
