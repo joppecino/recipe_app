@@ -152,6 +152,7 @@ class RecipeDetailScreen extends ConsumerWidget {
             if (tags.isNotEmpty) ...[
               Wrap(
                 spacing: 4,
+                runSpacing: 4,
                 children: tags.map((tag) => Chip(
                   label: Text(tag),
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,

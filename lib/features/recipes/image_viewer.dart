@@ -7,28 +7,40 @@ class FullScreenImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        iconTheme: const IconThemeData(color: Colors.white),
+        backgroundColor: theme.appBarTheme.backgroundColor,
+        iconTheme: theme.appBarTheme.iconTheme,
         elevation: 0,
       ),
-      body: Center(
-        child: InteractiveViewer(
-          child: Image.network(
-            imageUrl,
-            fit: BoxFit.contain,
-            loadingBuilder: (_, child, progress) =>
-                progress == null ? child : const Center(child: CircularProgressIndicator(color: Colors.white)),
-            errorBuilder: (_, _, _) => const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.broken_image, color: Colors.white54, size: 64),
-                SizedBox(height: 16),
-                Text('Failed to load image',
-                    style: TextStyle(color: Colors.white54)),
-              ],
+      body: LayoutBuilder(
+        builder: (context, constraints) => InteractiveViewer(
+          child: Center(
+            child: Image.network(
+              imageUrl,
+              width: constraints.maxWidth,
+              height: constraints.maxHeight,
+              fit: BoxFit.contain,
+              loadingBuilder: (_, child, progress) =>
+                  progress == null
+                      ? child
+                      : const SizedBox(
+                          width: 48,
+                          height: 48,
+                          child: CircularProgressIndicator(),
+                        ),
+              errorBuilder: (_, _, _) => const Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.broken_image, color: Colors.grey, size: 64),
+                  SizedBox(height: 16),
+                  Text('Failed to load image',
+                      style: TextStyle(color: Colors.grey)),
+                ],
+              ),
             ),
           ),
         ),

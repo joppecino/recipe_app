@@ -61,6 +61,7 @@ class RecipeCard extends StatelessWidget {
               const SizedBox(height: 4),
               Wrap(
                 spacing: 4,
+                runSpacing: 4,
                 children: tags.map((tag) => Chip(
                   label: Text(tag, style: const TextStyle(fontSize: 12)),
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
