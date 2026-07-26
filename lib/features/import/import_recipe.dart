@@ -44,6 +44,9 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
   final _ingredientControllers = <TextEditingController>[];
   final _instructionControllers = <TextEditingController>[];
   final _tagControllers = <TextEditingController>[];
+  final _tagBump = ValueNotifier<int>(0);
+  final _ingredientBump = ValueNotifier<int>(0);
+  final _instructionBump = ValueNotifier<int>(0);
 
   bool _loading = false;
   bool _dirtyAfterFetch = false;
@@ -97,6 +100,9 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
     for (final c in _tagControllers) {
       c.dispose();
     }
+    _tagBump.dispose();
+    _ingredientBump.dispose();
+    _instructionBump.dispose();
     super.dispose();
   }
 
@@ -158,63 +164,54 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
   }
 
   void _addIngredient() {
-    setState(() {
-      _ingredientControllers.add(TextEditingController());
-    });
+    _ingredientControllers.add(TextEditingController());
+    _ingredientBump.value++;
   }
 
   void _removeIngredient(int index) {
-    setState(() {
-      _ingredientControllers[index].dispose();
-      _ingredientControllers.removeAt(index);
-    });
+    _ingredientControllers[index].dispose();
+    _ingredientControllers.removeAt(index);
+    _ingredientBump.value++;
   }
 
   void _addInstruction() {
-    setState(() {
-      _instructionControllers.add(TextEditingController());
-    });
+    _instructionControllers.add(TextEditingController());
+    _instructionBump.value++;
   }
 
   void _removeInstruction(int index) {
-    setState(() {
-      _instructionControllers[index].dispose();
-      _instructionControllers.removeAt(index);
-    });
+    _instructionControllers[index].dispose();
+    _instructionControllers.removeAt(index);
+    _instructionBump.value++;
   }
 
   void _addTag() {
-    setState(() {
-      _tagControllers.add(TextEditingController());
-    });
+    _tagControllers.add(TextEditingController());
+    _tagBump.value++;
   }
 
   void _removeTag(int index) {
-    setState(() {
-      _tagControllers[index].dispose();
-      _tagControllers.removeAt(index);
-    });
+    _tagControllers[index].dispose();
+    _tagControllers.removeAt(index);
+    _tagBump.value++;
   }
 
   void _reorderTag(int oldIndex, int newIndex) {
-    setState(() {
-      final item = _tagControllers.removeAt(oldIndex);
-      _tagControllers.insert(newIndex, item);
-    });
+    final item = _tagControllers.removeAt(oldIndex);
+    _tagControllers.insert(newIndex, item);
+    _tagBump.value++;
   }
 
   void _reorderIngredient(int oldIndex, int newIndex) {
-    setState(() {
-      final item = _ingredientControllers.removeAt(oldIndex);
-      _ingredientControllers.insert(newIndex, item);
-    });
+    final item = _ingredientControllers.removeAt(oldIndex);
+    _ingredientControllers.insert(newIndex, item);
+    _ingredientBump.value++;
   }
 
   void _reorderInstruction(int oldIndex, int newIndex) {
-    setState(() {
-      final item = _instructionControllers.removeAt(oldIndex);
-      _instructionControllers.insert(newIndex, item);
-    });
+    final item = _instructionControllers.removeAt(oldIndex);
+    _instructionControllers.insert(newIndex, item);
+    _instructionBump.value++;
   }
 
   bool get _isClean {
@@ -385,32 +382,36 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
                                 ),
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(12),
-                                  child: Image.network(
-                                    _original!.imageUrl!,
-                                    width: double.infinity,
-                                    height: 200,
-                                    fit: BoxFit.cover,
-                                    loadingBuilder: (_, child, progress) =>
-                                        progress == null
-                                            ? child
-                                            : Container(
-                                                height: 200,
-                                                color: theme
-                                                    .colorScheme
-                                                    .surfaceContainerHighest,
-                                                child: const Center(
-                                                    child:
-                                                        CircularProgressIndicator()),
-                                              ),
-                                    errorBuilder: (_, _, _) => Container(
-                                      height: 200,
-                                      color: theme
-                                          .colorScheme
-                                          .surfaceContainerHighest,
-                                      child: const Center(
-                                        child: Icon(Icons.broken_image),
+                                  child: Stack(
+                                    children: [
+                                      Container(
+                                        height: 200,
+                                        color: theme
+                                            .colorScheme
+                                            .surfaceContainerHighest,
+                                        child: const Center(
+                                          child:
+                                              CircularProgressIndicator(),
+                                        ),
                                       ),
-                                    ),
+                                      Image.network(
+                                        _original!.imageUrl!,
+                                        width: double.infinity,
+                                        height: 200,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, _, _) =>
+                                            Container(
+                                          height: 200,
+                                          color: theme
+                                              .colorScheme
+                                              .surfaceContainerHighest,
+                                          child: const Center(
+                                            child:
+                                                Icon(Icons.broken_image),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -444,179 +445,119 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
+                                    Text(
+                                      'Tags',
+                                      style: theme.textTheme.titleSmall,
+                                    ),
+                                    ValueListenableBuilder<int>(
+                                      valueListenable: _tagBump,
+                                      builder: (context, _, _) => Column(
+                                        children: [
+                                          ReorderableListView.builder(
+                                            shrinkWrap: true,
+                                            physics:
+                                                const NeverScrollableScrollPhysics(),
+                                            buildDefaultDragHandles: false,
+                                            itemCount:
+                                                _tagControllers.length,
+                                            onReorderItem: _reorderTag,
+                                            proxyDecorator:
+                                                (child, index, animation) =>
+                                                    Material(
+                                              elevation: 2,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              child: child,
+                                            ),
+                                            itemBuilder: (context, index) {
+                                              final controller =
+                                                  _tagControllers[index];
+                                              return RepaintBoundary(
+                                                key: ValueKey(controller),
+                                                child: Padding(
+                                                padding:
+                                                    const EdgeInsets.only(
+                                                  bottom: 8,
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    ReorderableDragStartListener(
+                                                      index: index,
+                                                      child: const Icon(
+                                                        Icons.drag_handle,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(
+                                                        width: 8),
+                                                    Expanded(
+                                                      child: TextField(
+                                                        controller:
+                                                            controller,
+                                                        decoration:
+                                                            InputDecoration(
+                                                          border:
+                                                              const OutlineInputBorder(),
+                                                          hintText:
+                                                              'Tag ${index + 1}',
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    IconButton(
+                                                      onPressed: () =>
+                                                          _removeTag(
+                                                              index),
+                                                      icon: const Icon(
+                                                        Icons
+                                                            .remove_circle_outline,
+                                                        color:
+                                                            Colors.red,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                          if (_tagControllers.isEmpty)
+                                            Padding(
+                                              padding:
+                                                  const EdgeInsets.only(
+                                                bottom: 8,
+                                              ),
+                                              child: Text(
+                                                'No tags added.',
+                                                style: theme
+                                                    .textTheme.bodySmall
+                                                    ?.copyWith(
+                                                  color: theme
+                                                      .colorScheme.outline,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
                                     Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Text(
-                                          'Tags',
-                                          style: theme.textTheme.titleSmall,
-                                        ),
-                                        IconButton(
-                                          onPressed: _addTag,
-                                          icon: const Icon(
-                                            Icons.add_circle_outline,
+                                        InkWell(
+                                          onTap: _addTag,
+                                          borderRadius:
+                                              BorderRadius.circular(20),
+                                          highlightColor: theme
+                                              .colorScheme.primary
+                                              .withValues(alpha: 0.08),
+                                          splashColor: theme
+                                              .colorScheme.primary
+                                              .withValues(alpha: 0.12),
+                                          child: const Padding(
+                                            padding: EdgeInsets.all(8),
+                                            child: Icon(
+                                              Icons.add_circle_outline,
+                                            ),
                                           ),
                                         ),
                                       ],
-                                    ),
-                                    ReorderableListView.builder(
-                                      shrinkWrap: true,
-                                      physics:
-                                          const NeverScrollableScrollPhysics(),
-                                      buildDefaultDragHandles: false,
-                                      itemCount: _tagControllers.length,
-                                      onReorderItem: _reorderTag,
-                                      proxyDecorator:
-                                          (child, index, animation) =>
-                                              Material(
-                                        elevation: 2,
-                                        borderRadius:
-                                            BorderRadius.circular(8),
-                                        child: child,
-                                      ),
-                                      itemBuilder: (context, index) {
-                                        final controller =
-                                            _tagControllers[index];
-                                        return Padding(
-                                          key: ValueKey(controller),
-                                          padding: const EdgeInsets.only(
-                                            bottom: 8,
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              ReorderableDragStartListener(
-                                                index: index,
-                                                child: const Icon(
-                                                  Icons.drag_handle,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Expanded(
-                                                child: TextField(
-                                                  controller: controller,
-                                                  decoration:
-                                                      InputDecoration(
-                                                    border:
-                                                        const OutlineInputBorder(),
-                                                    hintText:
-                                                        'Tag ${index + 1}',
-                                                  ),
-                                                ),
-                                              ),
-                                              IconButton(
-                                                onPressed: () =>
-                                                    _removeTag(index),
-                                                icon: const Icon(
-                                                  Icons
-                                                      .remove_circle_outline,
-                                                  color: Colors.red,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                    if (_tagControllers.isEmpty)
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                          bottom: 8,
-                                        ),
-                                        child: Text(
-                                          'No tags added.',
-                                          style: theme.textTheme.bodySmall
-                                              ?.copyWith(
-                                                color:
-                                                    theme.colorScheme.outline,
-                                              ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          'Ingredients',
-                                          style: theme.textTheme.titleSmall,
-                                        ),
-                                        IconButton(
-                                          onPressed: _addIngredient,
-                                          icon: const Icon(
-                                            Icons.add_circle_outline,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    ReorderableListView.builder(
-                                      shrinkWrap: true,
-                                      physics:
-                                          const NeverScrollableScrollPhysics(),
-                                      buildDefaultDragHandles: false,
-                                      itemCount:
-                                          _ingredientControllers.length,
-                                      onReorderItem: _reorderIngredient,
-                                      proxyDecorator:
-                                          (child, index, animation) =>
-                                              Material(
-                                        elevation: 2,
-                                        borderRadius:
-                                            BorderRadius.circular(8),
-                                        child: child,
-                                      ),
-                                      itemBuilder: (context, index) {
-                                        final controller =
-                                            _ingredientControllers[index];
-                                        return Padding(
-                                          key: ValueKey(controller),
-                                          padding: const EdgeInsets.only(
-                                            bottom: 8,
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              ReorderableDragStartListener(
-                                                index: index,
-                                                child: const Icon(
-                                                  Icons.drag_handle,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              Expanded(
-                                                child: TextField(
-                                                  controller: controller,
-                                                  decoration:
-                                                      InputDecoration(
-                                                    border:
-                                                        const OutlineInputBorder(),
-                                                    hintText:
-                                                        'Ingredient ${index + 1}',
-                                                  ),
-                                                ),
-                                              ),
-                                              IconButton(
-                                                onPressed: () =>
-                                                    _removeIngredient(index),
-                                                icon: const Icon(
-                                                  Icons
-                                                      .remove_circle_outline,
-                                                  color: Colors.red,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      },
                                     ),
                                   ],
                                 ),
@@ -629,92 +570,238 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
+                                    Text(
+                                      'Ingredients',
+                                      style: theme.textTheme.titleSmall,
+                                    ),
+                                    ValueListenableBuilder<int>(
+                                      valueListenable: _ingredientBump,
+                                      builder: (context, _, _) => Column(
+                                        children: [
+                                          ReorderableListView.builder(
+                                            shrinkWrap: true,
+                                            physics:
+                                                const NeverScrollableScrollPhysics(),
+                                            buildDefaultDragHandles: false,
+                                            itemCount:
+                                                _ingredientControllers.length,
+                                            onReorderItem:
+                                                _reorderIngredient,
+                                            proxyDecorator:
+                                                (child, index, animation) =>
+                                                    Material(
+                                              elevation: 2,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              child: child,
+                                            ),
+                                            itemBuilder:
+                                                (context, index) {
+                                              final controller =
+                                                  _ingredientControllers[
+                                                      index];
+                                              return RepaintBoundary(
+                                                key:
+                                                    ValueKey(controller),
+                                                child: Padding(
+                                                padding:
+                                                    const EdgeInsets.only(
+                                                  bottom: 8,
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    ReorderableDragStartListener(
+                                                      index: index,
+                                                      child:
+                                                          const Icon(
+                                                        Icons
+                                                            .drag_handle,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(
+                                                        width: 8),
+                                                    Expanded(
+                                                      child: TextField(
+                                                        controller:
+                                                            controller,
+                                                        decoration:
+                                                            InputDecoration(
+                                                          border:
+                                                              const OutlineInputBorder(),
+                                                          hintText:
+                                                              'Ingredient ${index + 1}',
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    IconButton(
+                                                      onPressed: () =>
+                                                          _removeIngredient(
+                                                              index),
+                                                      icon: const Icon(
+                                                        Icons
+                                                            .remove_circle_outline,
+                                                        color:
+                                                            Colors.red,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                     Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Text(
-                                          'Instructions',
-                                          style: theme.textTheme.titleSmall,
-                                        ),
-                                        IconButton(
-                                          onPressed: _addInstruction,
-                                          icon: const Icon(
-                                            Icons.add_circle_outline,
+                                        InkWell(
+                                          onTap: _addIngredient,
+                                          borderRadius:
+                                              BorderRadius.circular(20),
+                                          highlightColor: theme
+                                              .colorScheme.primary
+                                              .withValues(alpha: 0.08),
+                                          splashColor: theme
+                                              .colorScheme.primary
+                                              .withValues(alpha: 0.12),
+                                          child: const Padding(
+                                            padding: EdgeInsets.all(8),
+                                            child: Icon(
+                                              Icons.add_circle_outline,
+                                            ),
                                           ),
                                         ),
                                       ],
                                     ),
-                                    ReorderableListView.builder(
-                                      shrinkWrap: true,
-                                      physics:
-                                          const NeverScrollableScrollPhysics(),
-                                      buildDefaultDragHandles: false,
-                                      itemCount:
-                                          _instructionControllers.length,
-                                      onReorderItem: _reorderInstruction,
-                                      proxyDecorator:
-                                          (child, index, animation) =>
-                                              Material(
-                                        elevation: 2,
-                                        borderRadius:
-                                            BorderRadius.circular(8),
-                                        child: child,
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Card(
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Instructions',
+                                      style: theme.textTheme.titleSmall,
+                                    ),
+                                    ValueListenableBuilder<int>(
+                                      valueListenable: _instructionBump,
+                                      builder: (context, _, _) => Column(
+                                        children: [
+                                          ReorderableListView.builder(
+                                            shrinkWrap: true,
+                                            physics:
+                                                const NeverScrollableScrollPhysics(),
+                                            buildDefaultDragHandles: false,
+                                            itemCount:
+                                                _instructionControllers
+                                                    .length,
+                                            onReorderItem:
+                                                _reorderInstruction,
+                                            proxyDecorator:
+                                                (child, index, animation) =>
+                                                    Material(
+                                              elevation: 2,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              child: child,
+                                            ),
+                                            itemBuilder:
+                                                (context, index) {
+                                              final controller =
+                                                  _instructionControllers[
+                                                      index];
+                                              return RepaintBoundary(
+                                                key:
+                                                    ValueKey(controller),
+                                                child: Padding(
+                                                padding:
+                                                    const EdgeInsets.only(
+                                                  bottom: 8,
+                                                ),
+                                                child: Row(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment
+                                                          .start,
+                                                  children: [
+                                                    ReorderableDragStartListener(
+                                                      index: index,
+                                                      child:
+                                                          const Icon(
+                                                        Icons
+                                                            .drag_handle,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(
+                                                        width: 8),
+                                                    SizedBox(
+                                                      width: 28,
+                                                      child: Text(
+                                                        '${index + 1}.',
+                                                        style: theme
+                                                            .textTheme
+                                                            .bodyLarge,
+                                                      ),
+                                                    ),
+                                                    Expanded(
+                                                      child: TextField(
+                                                        controller:
+                                                            controller,
+                                                        decoration:
+                                                            InputDecoration(
+                                                          border:
+                                                              const OutlineInputBorder(),
+                                                          hintText:
+                                                              'Step ${index + 1}',
+                                                        ),
+                                                        maxLines: 3,
+                                                      ),
+                                                    ),
+                                                    IconButton(
+                                                      onPressed: () =>
+                                                          _removeInstruction(
+                                                              index),
+                                                      icon: const Icon(
+                                                        Icons
+                                                            .remove_circle_outline,
+                                                        color:
+                                                            Colors.red,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ],
                                       ),
-                                      itemBuilder: (context, index) {
-                                        final controller =
-                                            _instructionControllers[index];
-                                        return Padding(
-                                          key: ValueKey(controller),
-                                          padding: const EdgeInsets.only(
-                                            bottom: 8,
+                                    ),
+                                    Row(
+                                      children: [
+                                        InkWell(
+                                          onTap: _addInstruction,
+                                          borderRadius:
+                                              BorderRadius.circular(20),
+                                          highlightColor: theme
+                                              .colorScheme.primary
+                                              .withValues(alpha: 0.08),
+                                          splashColor: theme
+                                              .colorScheme.primary
+                                              .withValues(alpha: 0.12),
+                                          child: const Padding(
+                                            padding: EdgeInsets.all(8),
+                                            child: Icon(
+                                              Icons.add_circle_outline,
+                                            ),
                                           ),
-                                          child: Row(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              ReorderableDragStartListener(
-                                                index: index,
-                                                child: const Icon(
-                                                  Icons.drag_handle,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              SizedBox(
-                                                width: 28,
-                                                child: Text(
-                                                  '${index + 1}.',
-                                                  style: theme
-                                                      .textTheme.bodyLarge,
-                                                ),
-                                              ),
-                                              Expanded(
-                                                child: TextField(
-                                                  controller: controller,
-                                                  decoration:
-                                                      InputDecoration(
-                                                    border:
-                                                        const OutlineInputBorder(),
-                                                    hintText:
-                                                        'Step ${index + 1}',
-                                                  ),
-                                                  maxLines: 3,
-                                                ),
-                                              ),
-                                              IconButton(
-                                                onPressed: () =>
-                                                    _removeInstruction(
-                                                        index),
-                                                icon: const Icon(
-                                                  Icons
-                                                      .remove_circle_outline,
-                                                  color: Colors.red,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      },
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),

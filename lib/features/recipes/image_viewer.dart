@@ -24,14 +24,6 @@ class FullScreenImage extends StatelessWidget {
               width: constraints.maxWidth,
               height: constraints.maxHeight,
               fit: BoxFit.contain,
-              loadingBuilder: (_, child, progress) =>
-                  progress == null
-                      ? child
-                      : const SizedBox(
-                          width: 48,
-                          height: 48,
-                          child: CircularProgressIndicator(),
-                        ),
               errorBuilder: (_, _, _) => const Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
