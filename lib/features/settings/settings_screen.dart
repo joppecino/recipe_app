@@ -9,6 +9,7 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
+    final searchBottom = ref.watch(searchBottomProvider);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -43,6 +44,17 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ],
               ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text('Layout', style: theme.textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Card(
+            child: SwitchListTile(
+              title: const Text('Search bar at bottom'),
+              subtitle: const Text('Move search and filter to the bottom of the recipe list'),
+              value: searchBottom,
+              onChanged: (v) => ref.read(searchBottomProvider.notifier).toggle(v),
             ),
           ),
         ],

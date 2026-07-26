@@ -176,7 +176,7 @@ class RecipeDetailScreen extends ConsumerWidget {
             ],
             Text(
               recipe.recipeYield != null && recipe.recipeYield!.isNotEmpty
-                  ? 'Ingredients (${recipe.recipeYield})'
+                  ? 'Ingredients (${recipe.recipeYield} portions)'
                   : 'Ingredients',
               style: theme.textTheme.titleMedium,
             ),

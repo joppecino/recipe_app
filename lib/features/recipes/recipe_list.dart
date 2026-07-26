@@ -66,6 +66,94 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
 
   void _unfocusSearch() => _searchFocusNode.unfocus();
 
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 4,
+            child: TextField(
+              controller: _searchController,
+              focusNode: _searchFocusNode,
+              onChanged: (value) {
+                _debounceTimer?.cancel();
+                _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+                  if (mounted) setState(() => _searchQuery = value);
+                });
+              },
+              decoration: InputDecoration(
+                hintText: 'Search recipes...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _debounceTimer?.cancel();
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                filled: true,
+                fillColor: Theme.of(context)
+                    .colorScheme
+                    .surfaceContainerHighest
+                    .withValues(alpha: 0.3),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 1,
+            child: SizedBox(
+              height: 48,
+              child: IconButton(
+                onPressed: () {
+                  _unfocusSearch();
+                  _openFilterSheet(_allRecipes);
+                },
+                icon: Badge(
+                  isLabelVisible: _selectedTags.isNotEmpty,
+                  smallSize: 8,
+                  child: Icon(
+                    Icons.filter_list,
+                    color: _selectedTags.isNotEmpty
+                        ? Theme.of(context).colorScheme.primary
+                        : null,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    final isBottom = ref.watch(searchBottomProvider);
+    final searchBar = Padding(
+      padding: EdgeInsets.only(
+        bottom: isBottom ? MediaQuery.of(context).padding.bottom : 0,
+      ),
+      child: _buildSearchBar(),
+    );
+    final list = Expanded(
+      child: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _buildRecipeList(),
+    );
+
+    return Column(
+      children: isBottom ? [list, searchBar] : [searchBar, list],
+    );
+  }
+
   Widget _buildRecipeList() {
     final filtered = _allRecipes.where(
         (r) => _matchesSearch(r) && _matchesTags(r));
@@ -289,93 +377,24 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         behavior: HitTestBehavior.translucent,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 4,
-                  child: TextField(
-                    controller: _searchController,
-                    focusNode: _searchFocusNode,
-                    onChanged: (value) {
-                      _debounceTimer?.cancel();
-                      _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-                        if (mounted) setState(() => _searchQuery = value);
-                      });
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Search recipes...',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                _debounceTimer?.cancel();
-                                _searchController.clear();
-                                setState(() => _searchQuery = '');
-                              },
-                            )
-                          : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                      filled: true,
-                      fillColor: Theme.of(context)
-                          .colorScheme
-                          .surfaceContainerHighest
-                          .withValues(alpha: 0.3),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  flex: 1,
-                  child: SizedBox(
-                    height: 48,
-                    child: IconButton(
-                      onPressed: () {
-                      _unfocusSearch();
-                      _openFilterSheet(_allRecipes);
-                    },
-                      icon: Badge(
-                        isLabelVisible: _selectedTags.isNotEmpty,
-                        smallSize: 8,
-                        child: Icon(
-                          Icons.filter_list,
-                          color: _selectedTags.isNotEmpty
-                              ? Theme.of(context).colorScheme.primary
-                              : null,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _buildRecipeList(),
-          ),
-        ],
+        child: _buildBody(),
       ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          _unfocusSearch();
-          final saved = await Navigator.of(context).push<bool>(
-            MaterialPageRoute(
-                builder: (_) => const ImportRecipeScreen()),
-          );
-          if (saved == true) _loadRecipes();
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Import Recipe'),
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(
+          bottom: ref.watch(searchBottomProvider) ? 56 : 0,
+        ),
+        child: FloatingActionButton.extended(
+          onPressed: () async {
+            _unfocusSearch();
+            final saved = await Navigator.of(context).push<bool>(
+              MaterialPageRoute(
+                  builder: (_) => const ImportRecipeScreen()),
+            );
+            if (saved == true) _loadRecipes();
+          },
+          icon: const Icon(Icons.add),
+          label: const Text('Import Recipe'),
+        ),
       ),
     );
   }

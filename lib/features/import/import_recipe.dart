@@ -8,6 +8,7 @@ import '../../database/database.dart';
 import '../../providers/providers.dart';
 import '../../services/parser_service.dart';
 import '../recipes/image_viewer.dart';
+import '../../widgets/success_toast.dart';
 
 String normalizeTag(String tag) {
   if (tag.isEmpty) return tag;
@@ -337,7 +338,10 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
           tags: Value<String?>(tags),
         ),
       );
-      if (mounted) Navigator.of(context).pop(true);
+      if (mounted) {
+        SuccessToast.show(context, '${_titleController.text} got saved');
+        Navigator.of(context).pop(true);
+      }
     } else {
       final recipe = RecipesCompanion.insert(
         title: _titleController.text,
@@ -360,7 +364,10 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
       );
 
       await db.insertRecipe(recipe);
-      if (mounted) Navigator.of(context).pop(true);
+      if (mounted) {
+        SuccessToast.show(context, '${_titleController.text} got saved');
+        Navigator.of(context).pop(true);
+      }
     }
   }
 
