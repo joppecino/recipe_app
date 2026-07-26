@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import '../../database/database.dart';
+import 'recipe_detail.dart';
 
 List<String> _parseList(String json) {
   final decoded = jsonDecode(json);
@@ -41,6 +42,10 @@ class RecipeCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: ListTile(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+              builder: (_) => RecipeDetailScreen(recipe: recipe)),
+        ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         title: Text(recipe.title, style: theme.textTheme.titleMedium),
         subtitle: Column(
