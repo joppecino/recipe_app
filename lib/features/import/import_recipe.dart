@@ -369,6 +369,18 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
                                     width: double.infinity,
                                     height: 200,
                                     fit: BoxFit.cover,
+                                    loadingBuilder: (_, child, progress) =>
+                                        progress == null
+                                            ? child
+                                            : Container(
+                                                height: 200,
+                                                color: theme
+                                                    .colorScheme
+                                                    .surfaceContainerHighest,
+                                                child: const Center(
+                                                    child:
+                                                        CircularProgressIndicator()),
+                                              ),
                                     errorBuilder: (_, _, _) => Container(
                                       height: 200,
                                       color: theme
@@ -617,7 +629,7 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
                         TextField(
                           controller: _urlController,
                           decoration: InputDecoration(
-                            hintText: 'Paste recipe URL...',
+                            hintText: 'Paste your Recipe URL',
                             prefixIcon: const Icon(Icons.link),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -640,7 +652,7 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
                                   )
                                 : const Icon(Icons.download),
                             label: Text(
-                              _loading ? 'Fetching...' : 'Fetch Recipe',
+                              _loading ? 'Fetching' : 'Fetch Recipe',
                             ),
                           ),
                         ),

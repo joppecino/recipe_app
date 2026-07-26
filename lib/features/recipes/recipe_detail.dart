@@ -130,6 +130,16 @@ class RecipeDetailScreen extends ConsumerWidget {
                     width: double.infinity,
                     height: 200,
                     fit: BoxFit.cover,
+                    loadingBuilder: (_, child, progress) =>
+                        progress == null
+                            ? child
+                            : Container(
+                                height: 200,
+                                color: theme
+                                    .colorScheme.surfaceContainerHighest,
+                                child: const Center(
+                                    child: CircularProgressIndicator()),
+                              ),
                     errorBuilder: (_, _, _) => Container(
                       height: 200,
                       color: theme.colorScheme.surfaceContainerHighest,

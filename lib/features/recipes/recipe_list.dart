@@ -133,7 +133,25 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
     final hasActiveFilter = _searchQuery.isNotEmpty || _selectedTags.isNotEmpty;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Recipes')),
+      appBar: AppBar(
+        title: const Text('Recipes'),
+        actions: [
+          IconButton(
+            icon: Icon(
+              ref.watch(themeModeProvider) == ThemeMode.dark
+                  ? Icons.light_mode
+                  : Icons.dark_mode,
+            ),
+            onPressed: () {
+              final current = ref.read(themeModeProvider);
+              ref.read(themeModeProvider.notifier).state =
+                  current == ThemeMode.dark
+                      ? ThemeMode.light
+                      : ThemeMode.dark;
+            },
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Padding(

@@ -19,6 +19,8 @@ class FullScreenImage extends StatelessWidget {
           child: Image.network(
             imageUrl,
             fit: BoxFit.contain,
+            loadingBuilder: (_, child, progress) =>
+                progress == null ? child : const Center(child: CircularProgressIndicator(color: Colors.white)),
             errorBuilder: (_, _, _) => const Column(
               mainAxisSize: MainAxisSize.min,
               children: [
