@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:drift/drift.dart' hide Column;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,8 +8,15 @@ import '../../database/database.dart';
 import '../../providers/providers.dart';
 import '../../services/parser_service.dart';
 
+List<String> _parseList(String json) {
+  final decoded = jsonDecode(json);
+  return (decoded as List).cast<String>();
+}
+
 class ImportRecipeScreen extends ConsumerStatefulWidget {
-  const ImportRecipeScreen({super.key});
+  final Recipe? existingRecipe;
+
+  const ImportRecipeScreen({super.key, this.existingRecipe});
 
   @override
   ConsumerState<ImportRecipeScreen> createState() => _ImportRecipeScreenState();
@@ -24,6 +32,29 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
   bool _loading = false;
   String? _error;
   ParsedRecipe? _original;
+  bool get _isEditing => widget.existingRecipe != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final existing = widget.existingRecipe;
+    if (existing != null) {
+      _titleController.text = existing.title;
+      if (existing.sourceUrl != null) {
+        _urlController.text = existing.sourceUrl!;
+      }
+      _ingredientControllers.addAll(_parseList(existing.ingredients)
+          .map((e) => TextEditingController(text: e)));
+      _instructionControllers.addAll(_parseList(existing.instructions)
+          .map((e) => TextEditingController(text: e)));
+      _original = ParsedRecipe(
+        title: existing.title,
+        ingredients: _parseList(existing.ingredients),
+        instructions: _parseList(existing.instructions),
+        imageUrl: existing.imageUrl,
+      );
+    }
+  }
 
   @override
   void dispose() {
@@ -128,17 +159,36 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
 
   Future<void> _save() async {
     final db = ref.read(databaseProvider);
-    final recipe = RecipesCompanion.insert(
-      title: _titleController.text,
-      ingredients: jsonEncode(
-          _ingredientControllers.map((c) => c.text).toList()),
-      instructions: jsonEncode(
-          _instructionControllers.map((c) => c.text).toList()),
-      createdAt: DateTime.now(),
-    );
+    final ingredients =
+        jsonEncode(_ingredientControllers.map((c) => c.text).toList());
+    final instructions =
+        jsonEncode(_instructionControllers.map((c) => c.text).toList());
 
-    await db.insertRecipe(recipe);
-    if (mounted) Navigator.of(context).pop(true);
+    if (_isEditing) {
+      final existing = widget.existingRecipe!;
+      db.updateRecipe(existing.copyWith(
+        title: _titleController.text,
+        ingredients: ingredients,
+        instructions: instructions,
+      ));
+      if (mounted) Navigator.of(context).pop(true);
+    } else {
+      final recipe = RecipesCompanion.insert(
+        title: _titleController.text,
+        ingredients: ingredients,
+        instructions: instructions,
+        imageUrl: _original?.imageUrl != null
+            ? Value(_original!.imageUrl)
+            : const Value.absent(),
+        sourceUrl: _urlController.text.isNotEmpty
+            ? Value(_urlController.text)
+            : const Value.absent(),
+        createdAt: DateTime.now(),
+      );
+
+      await db.insertRecipe(recipe);
+      if (mounted) Navigator.of(context).pop(true);
+    }
   }
 
   Future<bool> _confirmDiscard() async {
@@ -179,7 +229,7 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Import Recipe'),
+          title: Text(_isEditing ? 'Edit Recipe' : 'Import Recipe'),
           leading: BackButton(
             onPressed: () async {
               final shouldPop = await _confirmDiscard();
@@ -191,39 +241,40 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
         ),
         body: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _urlController,
-                      decoration: InputDecoration(
-                        hintText: 'Paste recipe URL...',
-                        prefixIcon: const Icon(Icons.link),
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 0),
+            if (!_isEditing)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _urlController,
+                        decoration: InputDecoration(
+                          hintText: 'Paste recipe URL...',
+                          prefixIcon: const Icon(Icons.link),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 0),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    onPressed: _loading ? null : _fetch,
-                    icon: _loading
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2),
-                          )
-                        : const Icon(Icons.download),
-                    label: Text(_loading ? '...' : 'Fetch'),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      onPressed: _loading ? null : _fetch,
+                      icon: _loading
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2),
+                            )
+                          : const Icon(Icons.download),
+                      label: Text(_loading ? '...' : 'Fetch'),
+                    ),
+                  ],
+                ),
               ),
-            ),
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -238,6 +289,25 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
                     crossAxisAlignment:
                         CrossAxisAlignment.start,
                     children: [
+                      if (_original?.imageUrl != null) ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            _original!.imageUrl!,
+                            width: double.infinity,
+                            height: 200,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => Container(
+                              height: 200,
+                              color: theme
+                                  .colorScheme.surfaceContainerHighest,
+                              child: const Center(
+                                  child: Icon(Icons.broken_image)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                       Card(
                         child: Padding(
                           padding: const EdgeInsets.all(16),
