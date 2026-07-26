@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../database/database.dart';
 import '../../providers/providers.dart';
 import '../import/import_recipe.dart';
+import 'image_viewer.dart';
 
 List<String> _parseList(String json) {
   final decoded = jsonDecode(json);
@@ -115,17 +116,25 @@ class RecipeDetailScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (recipe.imageUrl != null)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  recipe.imageUrl!,
-                  width: double.infinity,
-                  height: 200,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => Container(
+              GestureDetector(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        FullScreenImage(imageUrl: recipe.imageUrl!),
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    recipe.imageUrl!,
+                    width: double.infinity,
                     height: 200,
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    child: const Center(child: Icon(Icons.broken_image)),
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Container(
+                      height: 200,
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      child: const Center(child: Icon(Icons.broken_image)),
+                    ),
                   ),
                 ),
               ),

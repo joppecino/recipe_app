@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../database/database.dart';
 import '../../providers/providers.dart';
 import '../../services/parser_service.dart';
+import '../recipes/image_viewer.dart';
 
 String normalizeTag(String tag) {
   if (tag.isEmpty) return tag;
@@ -354,20 +355,28 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             if (_original?.imageUrl != null) ...[
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.network(
-                                  _original!.imageUrl!,
-                                  width: double.infinity,
-                                  height: 200,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) => Container(
+                              GestureDetector(
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => FullScreenImage(
+                                        imageUrl: _original!.imageUrl!),
+                                  ),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.network(
+                                    _original!.imageUrl!,
+                                    width: double.infinity,
                                     height: 200,
-                                    color: theme
-                                        .colorScheme
-                                        .surfaceContainerHighest,
-                                    child: const Center(
-                                      child: Icon(Icons.broken_image),
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => Container(
+                                      height: 200,
+                                      color: theme
+                                          .colorScheme
+                                          .surfaceContainerHighest,
+                                      child: const Center(
+                                        child: Icon(Icons.broken_image),
+                                      ),
                                     ),
                                   ),
                                 ),
