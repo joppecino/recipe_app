@@ -29,8 +29,9 @@ List<String> _parseTags(String? json) {
 
 class RecipeCard extends StatelessWidget {
   final Recipe recipe;
+  final VoidCallback? onChanged;
 
-  const RecipeCard({super.key, required this.recipe});
+  const RecipeCard({super.key, required this.recipe, this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -42,10 +43,13 @@ class RecipeCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: ListTile(
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-              builder: (_) => RecipeDetailScreen(recipe: recipe)),
-        ),
+        onTap: () async {
+          final changed = await Navigator.of(context).push<bool>(
+            MaterialPageRoute(
+                builder: (_) => RecipeDetailScreen(recipe: recipe)),
+          );
+          if (changed == true) onChanged?.call();
+        },
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         title: Text(recipe.title, style: theme.textTheme.titleMedium),
         subtitle: Column(

@@ -212,52 +212,84 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
                     (r) => _matchesSearch(r) && _matchesTags(r));
 
                 if (allRecipes.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.menu_book,
-                            size: 64,
-                            color: Theme.of(context).colorScheme.outline),
-                        const SizedBox(height: 16),
-                        Text('No recipes yet',
-                            style: Theme.of(context).textTheme.titleLarge),
-                      ],
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      await Future.delayed(const Duration(milliseconds: 400));
+                      setState(() {});
+                    },
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.5,
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.menu_book,
+                                  size: 64,
+                                  color: Theme.of(context).colorScheme.outline),
+                              const SizedBox(height: 16),
+                              Text('No recipes yet',
+                                  style: Theme.of(context).textTheme.titleLarge),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   );
                 }
 
                 if (filtered.isEmpty && hasActiveFilter) {
-                  return Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.search_off,
-                            size: 64,
-                            color: Theme.of(context).colorScheme.outline),
-                        const SizedBox(height: 16),
-                        Text('No recipes match your search',
-                            style: Theme.of(context).textTheme.titleMedium),
-                        const SizedBox(height: 8),
-                        TextButton(
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {
-                              _searchQuery = '';
-                              _selectedTags = {};
-                            });
-                          },
-                          child: const Text('Clear filters'),
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      await Future.delayed(const Duration(milliseconds: 400));
+                      setState(() {});
+                    },
+                    child: SingleChildScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      child: SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.5,
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.search_off,
+                                  size: 64,
+                                  color: Theme.of(context).colorScheme.outline),
+                              const SizedBox(height: 16),
+                              Text('No recipes match your search',
+                                  style: Theme.of(context).textTheme.titleMedium),
+                              const SizedBox(height: 8),
+                              TextButton(
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() {
+                                    _searchQuery = '';
+                                    _selectedTags = {};
+                                  });
+                                },
+                                child: const Text('Clear filters'),
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
+                      ),
                     ),
                   );
                 }
 
-                return ListView.builder(
-                  itemCount: filtered.length,
-                  itemBuilder: (context, index) =>
-                      RecipeCard(recipe: filtered.elementAt(index)),
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    setState(() {});
+                  },
+                  child: ListView.builder(
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) =>
+                        RecipeCard(
+                          recipe: filtered.elementAt(index),
+                          onChanged: () => setState(() {}),
+                        ),
+                  ),
                 );
               },
             ),

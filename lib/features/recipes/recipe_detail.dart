@@ -199,6 +199,7 @@ class RecipeDetailScreen extends ConsumerWidget {
               const SizedBox(height: 8),
               SelectableText(recipe.sourceUrl!,
                   style: TextStyle(color: theme.colorScheme.primary)),
+              const SizedBox(height: 16),
             ],
           ],
         ),
