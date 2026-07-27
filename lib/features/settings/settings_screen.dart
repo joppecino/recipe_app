@@ -14,7 +14,6 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
-    final searchBottom = ref.watch(searchBottomProvider);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -54,13 +53,51 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 24),
           Text('Layout', style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),
-          Card(
-            child: SwitchListTile(
-              title: const Text('Search bar at bottom'),
-              subtitle: const Text('Move search and filter to the bottom of the recipe list'),
-              value: searchBottom,
-              onChanged: (v) => ref.read(searchBottomProvider.notifier).toggle(v),
-            ),
+          Consumer(
+            builder: (context, ref, _) {
+              final searchBottom = ref.watch(searchBottomProvider);
+              final theme = Theme.of(context);
+              return Card(
+                child: ListTile(
+                  onTap: () => ref.read(searchBottomProvider.notifier).toggle(!searchBottom),
+                  title: const Text('Search bar at bottom'),
+                  subtitle: const Text('Move search and filter to the bottom of the recipe list'),
+                  trailing: AnimatedContainer(
+                      duration: const Duration(milliseconds: 400),
+                      curve: Curves.easeInOut,
+                      width: 48,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        color: searchBottom
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.surfaceContainerHighest,
+                      ),
+                      child: AnimatedAlign(
+                        duration: const Duration(milliseconds: 400),
+                        curve: Curves.easeInOut,
+                        alignment: searchBottom ? Alignment.centerRight : Alignment.centerLeft,
+                        child: Container(
+                          width: 24,
+                          height: 24,
+                          margin: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: theme.colorScheme.surface,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                blurRadius: 2,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              );
+            },
           ),
           const SizedBox(height: 24),
           Text('Data', style: theme.textTheme.titleMedium),
