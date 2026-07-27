@@ -321,6 +321,20 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
                 children: [
                   Text('Filter by tags',
                       style: Theme.of(context).textTheme.titleMedium),
+                  if (_selectedTags.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: () {
+                          didClear = true;
+                          setState(() => _selectedTags = {});
+                          Navigator.of(ctx).pop();
+                        },
+                        child: const Text('Clear filters'),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   if (allTags.isEmpty)
                     const Padding(
@@ -352,20 +366,6 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
                         ),
                       ),
                     ),
-                  if (_selectedTags.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          didClear = true;
-                          setState(() => _selectedTags = {});
-                          Navigator.of(ctx).pop();
-                        },
-                        child: const Text('Clear filters'),
-                      ),
-                    ),
-                  ],
                   const SizedBox(height: 16),
                 ],
               ),
