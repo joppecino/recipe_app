@@ -32,6 +32,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
   Timer? _debounceTimer;
   List<Recipe> _allRecipes = [];
   bool _loading = true;
+  bool _isRefreshing = false;
 
   @override
   void initState() {
@@ -58,10 +59,14 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
   }
 
   Future<void> _refreshRecipes() async {
+    setState(() => _isRefreshing = true);
     final db = ref.read(databaseProvider);
     final recipes = await db.getAllRecipes();
     if (mounted) {
-      setState(() => _allRecipes = recipes);
+      setState(() {
+        _allRecipes = recipes;
+        _isRefreshing = false;
+      });
     }
   }
 
@@ -168,8 +173,10 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
     if (_allRecipes.isEmpty) {
       return RefreshIndicator(
         onRefresh: _refreshRecipes,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
+        child: IgnorePointer(
+          ignoring: _isRefreshing,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
           child: SizedBox(
             height: MediaQuery.of(context).size.height * 0.5,
             child: Center(
@@ -187,7 +194,8 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
             ),
           ),
         ),
-      );
+      ),
+    );
     }
 
     final hasActiveFilter = _searchQuery.isNotEmpty || _selectedTags.isNotEmpty;
@@ -195,8 +203,10 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
     if (filtered.isEmpty && hasActiveFilter) {
       return RefreshIndicator(
         onRefresh: _refreshRecipes,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
+        child: IgnorePointer(
+          ignoring: _isRefreshing,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
           child: SizedBox(
             height: MediaQuery.of(context).size.height * 0.5,
             child: Center(
@@ -225,13 +235,16 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
             ),
           ),
         ),
-      );
+      ),
+    );
     }
 
     return RefreshIndicator(
       onRefresh: _refreshRecipes,
-      child: ListView.builder(
-        itemCount: filtered.length,
+      child: IgnorePointer(
+        ignoring: _isRefreshing,
+        child: ListView.builder(
+          itemCount: filtered.length,
         itemBuilder: (context, index) {
           final recipe = filtered.elementAt(index);
           return TweenAnimationBuilder<double>(
@@ -253,6 +266,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
           );
         },
       ),
+    ),
     );
   }
 
