@@ -95,8 +95,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   void initState() {
     super.initState();
     final raw = widget.recipe.recipeYield;
-    _baseYield = (double.tryParse(raw ?? '') ?? 0).round();
-    if (_baseYield < 1) _baseYield = 1;
+    _baseYield = (double.tryParse(raw ?? '') ?? 4).round();
+    if (_baseYield < 1) _baseYield = 4;
     _currentYield = _baseYield;
   }
 

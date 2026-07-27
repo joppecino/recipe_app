@@ -15,6 +15,12 @@ String normalizeTag(String tag) {
   return tag[0].toUpperCase() + tag.substring(1).toLowerCase();
 }
 
+String _extractYield(String? raw) {
+  if (raw == null || raw.isEmpty) return '';
+  final match = RegExp(r'\d+').firstMatch(raw);
+  return match?.group(0) ?? raw;
+}
+
 List<String> _parseList(String json) {
   final decoded = jsonDecode(json);
   return (decoded as List).cast<String>();
@@ -68,7 +74,7 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
         _descriptionController.text = existing.description!;
       }
       if (existing.recipeYield != null) {
-        _yieldController.text = existing.recipeYield!;
+        _yieldController.text = _extractYield(existing.recipeYield);
       }
       if (existing.sourceUrl != null) {
         _urlController.text = existing.sourceUrl!;
@@ -153,7 +159,7 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
         _dirtyAfterFetch = true;
         _titleController.text = result.title;
         _descriptionController.text = result.description ?? '';
-        _yieldController.text = result.yield ?? '';
+        _yieldController.text = _extractYield(result.yield);
         for (final c in _ingredientControllers) {
           c.dispose();
         }
@@ -245,7 +251,7 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
     if (_original == null) return true;
     if (_titleController.text != _original!.title) return false;
     if (_descriptionController.text != (_original!.description ?? '')) return false;
-    if (_yieldController.text != (_original!.yield ?? '')) return false;
+    if (_yieldController.text != _extractYield(_original!.yield)) return false;
     if (_ingredientControllers.length != _original!.ingredients.length) {
       return false;
     }
