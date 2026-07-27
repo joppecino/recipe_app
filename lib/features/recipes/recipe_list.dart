@@ -8,6 +8,7 @@ import '../../database/database.dart';
 import '../../providers/providers.dart';
 import '../import/import_recipe.dart';
 import '../settings/settings_screen.dart';
+import '../../widgets/success_toast.dart';
 import 'recipe_card.dart';
 
 String normalizeTag(String tag) {
@@ -16,7 +17,9 @@ String normalizeTag(String tag) {
 }
 
 class RecipeListScreen extends ConsumerStatefulWidget {
-  const RecipeListScreen({super.key});
+  final String? savedTitle;
+
+  const RecipeListScreen({super.key, this.savedTitle});
 
   @override
   ConsumerState<RecipeListScreen> createState() => _RecipeListScreenState();
@@ -34,6 +37,13 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
   void initState() {
     super.initState();
     _loadRecipes();
+    if (widget.savedTitle != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          SuccessToast.show(context, '${widget.savedTitle} got saved');
+        }
+      });
+    }
   }
 
   Future<void> _loadRecipes() async {

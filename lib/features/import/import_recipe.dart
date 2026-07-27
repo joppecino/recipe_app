@@ -8,7 +8,7 @@ import '../../database/database.dart';
 import '../../providers/providers.dart';
 import '../../services/parser_service.dart';
 import '../recipes/image_viewer.dart';
-import '../../widgets/success_toast.dart';
+import '../recipes/recipe_list.dart';
 
 String normalizeTag(String tag) {
   if (tag.isEmpty) return tag;
@@ -52,6 +52,7 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
   final _instructionBump = ValueNotifier<int>(0);
 
   bool _loading = false;
+  bool _saving = false;
   bool _dirtyAfterFetch = false;
   String? _error;
   ParsedRecipe? _original;
@@ -273,6 +274,7 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
   }
 
   Future<void> _save() async {
+    setState(() => _saving = true);
     final db = ref.read(databaseProvider);
     final ingredients = jsonEncode(
       _ingredientControllers.map((c) => c.text).toList(),
@@ -292,7 +294,7 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
 
     if (_isEditing) {
       final existing = widget.existingRecipe!;
-      db.updateRecipe(
+      await db.updateRecipe(
         existing.copyWith(
           title: _titleController.text,
           description: Value<String?>(_descriptionController.text.isNotEmpty
@@ -306,10 +308,6 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
           tags: Value<String?>(tags),
         ),
       );
-      if (mounted) {
-        SuccessToast.show(context, '${_titleController.text} got saved');
-        Navigator.of(context).pop(true);
-      }
     } else {
       final recipe = RecipesCompanion.insert(
         title: _titleController.text,
@@ -332,10 +330,22 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
       );
 
       await db.insertRecipe(recipe);
-      if (mounted) {
-        SuccessToast.show(context, '${_titleController.text} got saved');
-        Navigator.of(context).pop(true);
-      }
+    }
+
+    if (mounted) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              RecipeListScreen(savedTitle: _titleController.text),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+          transitionDuration: const Duration(milliseconds: 350),
+        ),
+        (route) => false,
+      );
     }
   }
 
@@ -940,8 +950,16 @@ class _ImportRecipeScreenState extends ConsumerState<ImportRecipeScreen> {
                     width: double.infinity,
                     height: 48,
                     child: FilledButton(
-                      onPressed: _save,
-                      child: const Text('Save Recipe'),
+                      onPressed: _saving ? null : _save,
+                      child: _saving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text('Save Recipe'),
                     ),
                   ),
                 ),
