@@ -24,7 +24,6 @@ class RecipeListScreen extends ConsumerStatefulWidget {
 
 class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
   final _searchController = TextEditingController();
-  final _searchFocusNode = FocusNode();
   String _searchQuery = '';
   Set<String> _selectedTags = {};
   Timer? _debounceTimer;
@@ -59,12 +58,11 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
   @override
   void dispose() {
     _searchController.dispose();
-    _searchFocusNode.dispose();
     _debounceTimer?.cancel();
     super.dispose();
   }
 
-  void _unfocusSearch() => _searchFocusNode.unfocus();
+  void _unfocusSearch() => FocusScope.of(context).unfocus();
 
   Widget _buildSearchBar() {
     return Padding(
@@ -75,7 +73,6 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
             flex: 4,
             child: TextField(
               controller: _searchController,
-              focusNode: _searchFocusNode,
               onChanged: (value) {
                 _debounceTimer?.cancel();
                 _debounceTimer = Timer(const Duration(milliseconds: 300), () {
